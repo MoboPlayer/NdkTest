@@ -1,0 +1,13 @@
+bin/
+gen/
+*.so
+*~
+*.swp
+.classpath
+.project
+project.properties
+*.db
+.setting/
+.settings/
+rawso
+org.eclipse.core.resources.prefs
