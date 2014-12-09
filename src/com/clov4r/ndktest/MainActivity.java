@@ -15,15 +15,27 @@ public class MainActivity extends ActionBarActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		HelloJni h = new HelloJni();
+		SubtitleJni h = new SubtitleJni();
 		TextView  tv = (TextView) this.findViewById(R.id.hello);
-        
-        String libpath = "/data/data/com.example.hellojni/lib/";
+        this.getFilesDir().getParent();
+        String libpath = getFilesDir().getParent()+"/lib/";
         String libname = "libffmpeg_armv7_neon.so";
         String filePath =  Environment.getExternalStorageDirectory()+"/Godzilla.srt";
         Log.e("params", libpath+" "+filePath);
-        tv.append( h.stringFromJNI(libpath,libname,filePath,0,47) );
-        Toast.makeText(this, tv.getText().toString(), Toast.LENGTH_LONG).show();
+        StringBuffer sb = new StringBuffer();
+        String temp = h.openFFmpegAndSubtitleFileInJNI(libpath,libname,filePath,0);
+        sb.append("open subtitle file :"+temp+"\n");
+        for(int i=0;i<100;i++){
+        	String str = h.getSubtitleByTime(1000*i);
+        	if(str!=null){
+
+        		Log.e("subtitle", str==null?" null ": str);
+        		sb.append("time:"+i+"s subtitle:"+str+"\n");
+        	}
+        }
+       
+        tv.setText( sb.toString());
+//        Toast.makeText(this, tv.getText().toString(), Toast.LENGTH_LONG).show();
 				
 	}
 
