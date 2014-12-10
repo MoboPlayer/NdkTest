@@ -64,6 +64,7 @@ Java_com_clov4r_ndktest_SubtitleJni_getSubtitleByTime( JNIEnv* env,
                                                   )
 {
 	char *subtitle = get_subtitle_ontime(current_time);
+//	char *subtitle = get_all_subtitle_ontime();
     return (*env)->NewStringUTF(env,subtitle);
 
 }

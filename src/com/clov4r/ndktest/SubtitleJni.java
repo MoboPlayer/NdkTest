@@ -1,4 +1,3 @@
-package com.clov4r.ndktest;
 /**
  * The MIT License (MIT)
  * 
@@ -23,6 +22,8 @@ package com.clov4r.ndktest;
  * SOFTWARE.
  *
  */
+package com.clov4r.ndktest;
+
 public class SubtitleJni {
 	  /* A native method that is implemented by the
      * 'hello-jni' native library, which is packaged

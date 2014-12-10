@@ -87,7 +87,7 @@ int time_in_subtitle(AVSubtitle *subtitle, int time)
 {
     long long start_time = subtitle->pts/(AV_TIME_BASE/1000) + subtitle->start_display_time;
     long long end_time = subtitle->pts/(AV_TIME_BASE/1000) + subtitle->end_display_time;
-    
+//    LOGI("start time:%lld end_time %lld",start_time,end_time);
     if (time >= start_time && time <= end_time) {
         return 1;
     }
@@ -118,10 +118,12 @@ int time_greater_subtitle(AVSubtitle *subtitle, int time)
 int binary_search(AVSubtitle *a, int key, int n)
 {
     int left = 0, right = n - 1, mid = 0;
-    
-    while (left < right) {
+
+//    LOGE("time:%d ",key);//
+    while (left <= right) {
         mid = (left + right) / 2;
-        
+//        LOGI("mid:%d left:%d right:%d",mid,left,right);//
+
         if (time_in_subtitle(&a[mid], key))
             return mid;
         
@@ -152,6 +154,7 @@ char *get_subtitle_ontime(int cur_time)
         return NULL;
     }
     int array_index = -1;
+//    array_index = cur_time;
     char *subtitle_text = NULL;
     sub_data_p sub_p = g_sub_p;
     array_index = binary_search(sub_p->subtitles_array, cur_time, sub_p->subtitle_index);
