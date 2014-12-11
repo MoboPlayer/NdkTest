@@ -48,8 +48,8 @@
  */
 package com.clov4r.ndktest;
 
+import android.content.Intent;
 import android.os.Bundle;
-
 import android.os.Environment;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -71,7 +71,8 @@ public class MainActivity extends ActionBarActivity {
         String filePath =  Environment.getExternalStorageDirectory()+"/Godzilla.srt";
         Log.e("params", libpath+" "+filePath);
         StringBuffer sb = new StringBuffer();
-        String temp = h.openFFmpegAndSubtitleFileInJNI(libpath,libname,filePath,0);
+        h.loadFFmpegLibs(libpath,libname);
+        String temp = h.openSubtitleFileInJNI(filePath,0);
         sb.append("open subtitle file :"+temp+"\n");
         /*
          * 读取1000秒内的字幕，每500毫秒读取一次 
@@ -93,6 +94,8 @@ public class MainActivity extends ActionBarActivity {
         tv.setText( sb.toString());
 //        Toast.makeText(this, tv.getText().toString(), Toast.LENGTH_LONG).show();
 				
+        Intent intent=new Intent(this,MoboThumbnailTestActivity.class);
+        startActivity(intent);
 	}
 
 	@Override

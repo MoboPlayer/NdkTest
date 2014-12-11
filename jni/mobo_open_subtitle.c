@@ -27,17 +27,11 @@
 #define DEFAULT_SUBTITLE_SIZE   2000
 
 
-ffmpeg_func_t ffmpeg;
+extern ffmpeg_func_t ffmpeg;
 
 
 sub_data_p g_sub_p;
 char *sj_get_raw_text_from_ssa(const char *ssa);
-
-
-void init_ffmpeg(const char *lib_path, const char * ffmpeg_filename)
-{
-	init_ffmpeg_func(lib_path, ffmpeg_filename, &ffmpeg);
-}
 
 static int open_codec_context(sub_data_p sub_p, int index, enum AVMediaType type)
 {

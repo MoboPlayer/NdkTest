@@ -43,6 +43,7 @@
 #include "libavutil/avstring.h"
 #include "libavutil/frame.h"
 #include "libavutil/channel_layout.h"
+#include "libswscale/swscale.h"
 
 #include "libswresample/swresample.h"
 //#ifdef __CMPLAYER__CORE__
@@ -137,6 +138,22 @@ typedef struct ffmpeg_func_t
     void (*av_frame_free)(AVFrame **frame);
     int (*av_strerror)(int errnum, char *errbuf, size_t errbuf_size);
 
+    int(*av_find_best_stream)(AVFormatContext *ic, enum AVMediaType type,
+            int wanted_stream_nb, int related_stream,
+            AVCodec **decoder_ret, int flags);
+    const char *(*av_get_media_type_string)(enum AVMediaType media_type);
+    void (*av_dump_format)(AVFormatContext *ic, int index,
+                        const char *url, int is_output);
+    struct SwsContext *(*sws_getCachedContext)(struct SwsContext *context, int srcW,
+                                            int srcH, enum AVPixelFormat srcFormat,
+                                            int dstW, int dstH,
+                                            enum AVPixelFormat dstFormat, int flags,
+                                            SwsFilter *srcFilter,
+                                            SwsFilter *dstFilter,
+                                            const double *param);
+    int (*sws_scale)(struct SwsContext *c, const uint8_t *const srcSlice[],
+                  const int srcStride[], int srcSliceY, int srcSliceH,
+                  uint8_t *const dst[], const int dstStride[]);
 
 }ffmpeg_func_t;
 

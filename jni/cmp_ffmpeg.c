@@ -24,6 +24,7 @@
  */
 #include "cmp_ffmpeg.h"
 
+ffmpeg_func_t ffmpeg;
 
 int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_func_t *ffmpeg_func_p)
 {
@@ -201,6 +202,21 @@ int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_
 
 	ffmpeg_func_p->av_strerror = dlsym(handle, "av_strerror");
 	FF_FUNC_CHECK(ffmpeg_func_p->av_strerror);
+
+	ffmpeg_func_p->av_find_best_stream = dlsym(handle, "av_find_best_stream");
+	FF_FUNC_CHECK(ffmpeg_func_p->av_find_best_stream);
+
+	ffmpeg_func_p->av_get_media_type_string = dlsym(handle, "av_get_media_type_string");
+	FF_FUNC_CHECK(ffmpeg_func_p->av_get_media_type_string);
+
+	ffmpeg_func_p->av_dump_format = dlsym(handle, "av_dump_format");
+	FF_FUNC_CHECK(ffmpeg_func_p->av_dump_format);
+
+	ffmpeg_func_p->sws_getCachedContext = dlsym(handle, "sws_getCachedContext");
+	FF_FUNC_CHECK(ffmpeg_func_p->sws_getCachedContext);
+
+	ffmpeg_func_p->sws_scale = dlsym(handle, "sws_scale");
+	FF_FUNC_CHECK(ffmpeg_func_p->sws_scale);
 
 	if ((error = dlerror()) != NULL)  {
 		LOG("!!!can't find sym in ffmpeg.so : %s",error);

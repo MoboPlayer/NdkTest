@@ -29,24 +29,22 @@
  * open FFmpeg lib and open subtitle file.
  */
 jstring
-Java_com_clov4r_ndktest_SubtitleJni_openFFmpegAndSubtitleFileInJNI( JNIEnv* env,
+Java_com_clov4r_ndktest_SubtitleJni_openSubtitleFileInJNI( JNIEnv* env,
                                                   jobject thiz ,
-                                                  jstring jlib_path,
-                                                  jstring jffmpeg_filename,
                                                   jstring jfile, int stream_index
                                                   )
 {
 
 
-    char *lib_path = (*env)->GetStringUTFChars(env, jlib_path, 0);
-    char * ffmpeg_filename = (*env)->GetStringUTFChars(env, jffmpeg_filename, 0);
+//    char *lib_path = (*env)->GetStringUTFChars(env, jlib_path, 0);
+//    char * ffmpeg_filename = (*env)->GetStringUTFChars(env, jffmpeg_filename, 0);
     char *file = (*env)->GetStringUTFChars(env, jfile, 0);
 
 
 
-	LOGE("lib_path = %s", lib_path);
+//	LOGE("lib_path = %s", lib_path);
 
-	init_ffmpeg(lib_path,ffmpeg_filename);
+//	init_ffmpeg(lib_path,ffmpeg_filename);
 	//LOGI("lib_path = %s", lib_path);
 //
 	open_subtitle(file,stream_index);
@@ -64,7 +62,6 @@ Java_com_clov4r_ndktest_SubtitleJni_getSubtitleByTime( JNIEnv* env,
                                                   )
 {
 	char *subtitle = get_subtitle_ontime(current_time);
-//	char *subtitle = get_all_subtitle_ontime();
     return (*env)->NewStringUTF(env,subtitle);
 
 }
