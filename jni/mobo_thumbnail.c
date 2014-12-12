@@ -159,19 +159,16 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		return NULL;
 
 	ret = gen_thumbnail(file, gen_second);
-	LOG("gen_thumbnail---->%d",ret);
 
 	if (ret < 0) {
 		if (frame)
 			ffmpeg.av_frame_free(&frame);
 		return NULL;
 	}
-	LOG("av_frame_free---->%d",ret);
 
 	ret = ffmpeg.avpicture_alloc(&picture, PIX_FMT_ARGB, video_dec_ctx->width,
 			video_dec_ctx->height);
 
-	LOG("avpicture_alloc---->%d",ret);
 	if (ret < 0) {
 		if (frame)
 			ffmpeg.av_frame_free(&frame);
@@ -186,11 +183,9 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 			video_dec_ctx->height, PIX_FMT_ARGB, SWS_FAST_BILINEAR, NULL, NULL,
 			NULL);
 
-	LOG("sws_getCachedContext---->%d",1);
 	ffmpeg.sws_scale(sws_context, (const uint8_t **) frame->data, frame->linesize, 0,
 			video_dec_ctx->height, picture.data, picture.linesize);
 
-	LOG("sws_scale---->%d",1);
 	if (frame) {
 		ffmpeg.av_frame_free(&frame);
 	}
@@ -201,7 +196,6 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		ffmpeg.avformat_close_input(&fmt_ctx);
 	}
 
-	LOG("end---->%d",1);
 	AVPicture *p = &picture;
 	return p;
 }
@@ -210,17 +204,3 @@ void free_avpicture(AVPicture *picture){
 	ffmpeg.avpicture_free(picture);
 }
 
-/**
- *
- char *s = "123.txt";
-
- char * save_thumbnail(const char *video_path, const char *image_path, int gen_pos,
- int *width, int *height) {
- AVPicture *av_picture = get_rgb24_picture(video_path, gen_pos, *width,
- *height);
- //int res=av_create_tmp();
- //	return res;
- //*width =2;
- return &width+"x"+&height;
- }
- */

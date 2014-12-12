@@ -29,7 +29,7 @@
 
 extern ffmpeg_func_t ffmpeg;
 
-void Java_com_clov4r_ndktest_BaseJNILib_loadFFmpeg(JNIEnv* env, jobject thiz,
+void Java_com_clov4r_moboplayer_android_nil_codec_BaseJNILib_loadFFmpeg(JNIEnv* env, jobject thiz,
 		jstring jlib_path, jstring jffmpeg_filename) {
 	char *lib_path = (*env)->GetStringUTFChars(env, jlib_path, 0);
 	char * ffmpeg_filename = (*env)->GetStringUTFChars(env, jffmpeg_filename,

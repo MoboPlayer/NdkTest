@@ -29,24 +29,19 @@
 #include <jni.h>
 #include "cmp_log.h"
 
-jstring Java_com_clov4r_ndktest_ScreenShotLibJni_getThumbnail(JNIEnv* env,
+jstring Java_com_clov4r_moboplayer_android_nil_codec_ScreenShotLibJni_getThumbnail(JNIEnv* env,
 		jobject thiz, jstring video_name, jobject bitmap_data, jint gen_pos,
 		jint width, jint height) {
-	LOG("get_rgb24_picture start");
 	void *b = 0;
 	int img_width, img_height;
     char *video_path = (*env)->GetStringUTFChars(env, video_name, 0);
-	LOG("get_rgb24_picture----%s",video_path);
 	b = (*env)->GetDirectBufferAddress(env,bitmap_data);
 	if (b) {
-		LOG("get_rgb24_picture----%s","GetDirectBufferAddress");
 		AVPicture* av_picture = get_rgb24_picture(video_path, gen_pos,
 				&img_width, &img_height);
-		LOG("get_rgb24_picture----%d,%d,%d",img_width,img_height,av_picture->linesize[0]);
+//		LOG("get_rgb24_picture----%d,%d,%d",img_width,img_height,av_picture->linesize[0]);
 		memcpy(b,av_picture->data[0],av_picture->linesize[0]*img_height);
 		free_avpicture(av_picture);
-//		jclass ByteBufferClass=(*env)->GetObjectClass(bitmap_data);
-//		jmethodID putByteArray=  (*env)->GetStaticMethodID(env, ByteBufferClass, "put", "()Ljava/awt/Toolkit;");
 		char res[50];
 		sprintf(res,"%d,%d",img_width,img_height);
 	    return (*env)->NewStringUTF(env,res);

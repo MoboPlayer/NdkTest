@@ -29,7 +29,7 @@
  * open FFmpeg lib and open subtitle file.
  */
 jstring
-Java_com_clov4r_ndktest_SubtitleJni_openSubtitleFileInJNI( JNIEnv* env,
+Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileInJNI( JNIEnv* env,
                                                   jobject thiz ,
                                                   jstring jfile, int stream_index
                                                   )
@@ -56,7 +56,7 @@ Java_com_clov4r_ndktest_SubtitleJni_openSubtitleFileInJNI( JNIEnv* env,
  *
  */
 jstring
-Java_com_clov4r_ndktest_SubtitleJni_getSubtitleByTime( JNIEnv* env,
+Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTime( JNIEnv* env,
                                                   jobject thiz ,
                                                   int current_time
                                                   )

@@ -72,7 +72,7 @@ public class MainActivity extends ActionBarActivity {
         this.getFilesDir().getParent();
         String libpath = getFilesDir().getParent()+"/lib/";
         String libname = "libffmpeg_armv7_neon.so";
-        String filePath =  videoName;//Environment.getExternalStorageDirectory()+"/Godzilla.srt";
+        String filePath =  Environment.getExternalStorageDirectory()+"/Godzilla.srt";//videoName;//
         Log.e("params", libpath+" "+filePath);
         StringBuffer sb = new StringBuffer();
         h.loadFFmpegLibs(libpath,libname);
