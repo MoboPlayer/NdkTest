@@ -1,4 +1,3 @@
-package com.clov4r.ndktest;
 /**
  * The MIT License (MIT)
  * 
@@ -23,17 +22,27 @@ package com.clov4r.ndktest;
  * SOFTWARE.
  *
  */
-public class BaseJNILib {
-    /* this is used to load the 'hello-jni' library on application
-     * startup. The library has already been unpacked into
-     * /data/data/com.example.hellojni/lib/libhello-jni.so at
-     * installation time by the package manager.
+package com.clov4r.moboplayer.android.nil.codec;
+
+public class SubtitleJni extends BaseJNILib {
+	  /* A native method that is implemented by the
+     * 'hello-jni' native library, which is packaged
+     * with this application.
      */
-    static {
-        System.loadLibrary("mobo_jni_util");
-    }
-    public native void loadFFmpeg(String libPath,String libName);
-    public void loadFFmpegLibs(String libPath,String libName){
-    	loadFFmpeg(libPath,libName);
-    }
+    public native String  openSubtitleFileInJNI(String filePath,int index);
+
+    public native String  getSubtitleByTime(int time);
+    
+    /* This is another native method declaration that is *not*
+     * implemented by 'hello-jni'. This is simply to show that
+     * you can declare as many native methods in your Java code
+     * as you want, their implementation is searched in the
+     * currently loaded native libraries only the first time
+     * you call them.
+     *
+     * Trying to call this function will result in a
+     * java.lang.UnsatisfiedLinkError exception !
+     */
+    public native String  unimplementedStringFromJNI();
+
 }

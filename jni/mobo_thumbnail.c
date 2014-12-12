@@ -86,8 +86,12 @@ int gen_thumbnail(const char *file, int gen_second) {
 	ffmpeg.av_register_all();
 
 	/* open input file, and allocate format context */
-	if (ffmpeg.avformat_open_input(&fmt_ctx, src_filename, NULL, NULL) < 0) {
+	if ((ret=ffmpeg.avformat_open_input(&fmt_ctx, src_filename, NULL, NULL)) < 0) {
 		fprintf(stderr, "Could not open source file %s\n", src_filename);
+		 char error[500];
+		 ffmpeg.av_strerror(ret, error, 500);
+
+		LOG("gen_thumbnail---->%s",error);
 		return -1;
 	}
 
@@ -164,7 +168,7 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 	}
 	LOG("av_frame_free---->%d",ret);
 
-	ret = ffmpeg.avpicture_alloc(&picture, PIX_FMT_RGB24, video_dec_ctx->width,
+	ret = ffmpeg.avpicture_alloc(&picture, PIX_FMT_ARGB, video_dec_ctx->width,
 			video_dec_ctx->height);
 
 	LOG("avpicture_alloc---->%d",ret);
@@ -179,7 +183,7 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 
 	sws_context = ffmpeg.sws_getCachedContext(sws_context, video_dec_ctx->width,
 			video_dec_ctx->height, video_dec_ctx->pix_fmt, video_dec_ctx->width,
-			video_dec_ctx->height, PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL,
+			video_dec_ctx->height, PIX_FMT_ARGB, SWS_FAST_BILINEAR, NULL, NULL,
 			NULL);
 
 	LOG("sws_getCachedContext---->%d",1);
@@ -200,6 +204,10 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 	LOG("end---->%d",1);
 	AVPicture *p = &picture;
 	return p;
+}
+
+void free_avpicture(AVPicture *picture){
+	ffmpeg.avpicture_free(picture);
 }
 
 /**

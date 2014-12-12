@@ -22,12 +22,13 @@
  * SOFTWARE.
  *
  */
-package com.clov4r.ndktest;
+package com.clov4r.moboplayer.android.nil.codec;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
 import android.graphics.Bitmap;
+import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
 import android.util.Log;
 
@@ -44,7 +45,7 @@ public class ScreenShotLibJni extends BaseJNILib{
 	public native String getThumbnail(String videoName,
 			ByteBuffer bitmapData, int position, int width, int height);
 
-	public void getScreenShot(String videoName, String img_save_path,
+	public Bitmap getScreenShot(String videoName, String img_save_path,
 			int position, int width, int height) {
 		ByteBuffer bitmapData = ByteBuffer.allocateDirect(3000 * 1024);
 		String size = getThumbnail(videoName, bitmapData, position,
@@ -53,7 +54,9 @@ public class ScreenShotLibJni extends BaseJNILib{
 		String[] sizeArray=size.split(",");
 		int[] data = new int[intBuffer.limit()];
 		intBuffer.get(data);
-		Bitmap bitmap=Bitmap.createBitmap(data, Integer.parseInt(sizeArray[0]), Integer.parseInt(sizeArray[1]), null);
+		
+		Bitmap bitmap=Bitmap.createBitmap(data, Integer.parseInt(sizeArray[0]), Integer.parseInt(sizeArray[1]), Config.ARGB_8888);
 		Log.e("ScreenShotLib", "" + size);
+		return bitmap;
 	}
 }

@@ -44,10 +44,10 @@ jstring Java_com_clov4r_ndktest_ScreenShotLibJni_getThumbnail(JNIEnv* env,
 				&img_width, &img_height);
 		LOG("get_rgb24_picture----%d,%d,%d",img_width,img_height,av_picture->linesize[0]);
 		memcpy(b,av_picture->data[0],av_picture->linesize[0]*img_height);
-
+		free_avpicture(av_picture);
 //		jclass ByteBufferClass=(*env)->GetObjectClass(bitmap_data);
 //		jmethodID putByteArray=  (*env)->GetStaticMethodID(env, ByteBufferClass, "put", "()Ljava/awt/Toolkit;");
-		char* res=NULL;
+		char res[50];
 		sprintf(res,"%d,%d",img_width,img_height);
 	    return (*env)->NewStringUTF(env,res);
 	}

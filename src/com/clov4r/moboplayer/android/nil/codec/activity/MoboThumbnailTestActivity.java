@@ -22,30 +22,37 @@
  * SOFTWARE.
  *
  */
-package com.clov4r.ndktest;
+package com.clov4r.moboplayer.android.nil.codec.activity;
 
 import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Intent;
-import android.net.Uri;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 
+import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni;
+
 public class MoboThumbnailTestActivity extends Activity {
-	final String videoName = Environment.getExternalStorageDirectory()+"/dy/ppkard.mp4";
+//	final String videoName = Environment.getExternalStorageDirectory()+"/dy/ppkard.mp4";
+	final String videoName = Environment.getExternalStorageDirectory()+"/Movies/[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv";
+
 	final String img_save_path = Environment.getExternalStorageDirectory()+"/mobo_screen_shot_%d.png";
 	int index = 1;
+	ImageView imageView=null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		LinearLayout layout = new LinearLayout(this);
+		imageView=new ImageView(this);
+		
 		Button button = new Button(this);
 		layout.addView(button);
+		layout.addView(imageView);
 		button.setText("截图");
 		setContentView(layout);
 		button.setOnClickListener(mOnClickListener);
@@ -56,8 +63,9 @@ public class MoboThumbnailTestActivity extends Activity {
 		@Override
 		public void onClick(View v) {
 			// TODO Auto-generated method stub
-			ScreenShotLibJni.getInstance().getScreenShot(videoName,
-					String.format(img_save_path, index++), 1, 500, 350);
+			Bitmap bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
+					String.format(img_save_path, index++), 350, 500, 350);
+			imageView.setImageBitmap(bitmap);
 //			Intent intent=new Intent();
 //			intent.setComponent(new ComponentName("com.clov4r.moboplayer.android.nil", "com.clov4r.moboplayer.android.nil.MainInterface"));
 //			

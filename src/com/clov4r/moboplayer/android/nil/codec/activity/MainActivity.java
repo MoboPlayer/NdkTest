@@ -46,7 +46,7 @@
  * SOFTWARE.
  *
  */
-package com.clov4r.ndktest;
+package com.clov4r.moboplayer.android.nil.codec.activity;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -57,7 +57,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 
+import com.clov4r.moboplayer.android.nil.codec.R;
+import com.clov4r.moboplayer.android.nil.codec.SubtitleJni;
+
 public class MainActivity extends ActionBarActivity {
+	final String videoName = Environment.getExternalStorageDirectory()+"/Movies/[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv";
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -68,7 +72,7 @@ public class MainActivity extends ActionBarActivity {
         this.getFilesDir().getParent();
         String libpath = getFilesDir().getParent()+"/lib/";
         String libname = "libffmpeg_armv7_neon.so";
-        String filePath =  Environment.getExternalStorageDirectory()+"/Godzilla.srt";
+        String filePath =  videoName;//Environment.getExternalStorageDirectory()+"/Godzilla.srt";
         Log.e("params", libpath+" "+filePath);
         StringBuffer sb = new StringBuffer();
         h.loadFFmpegLibs(libpath,libname);
