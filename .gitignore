@@ -1,7 +1,7 @@
 bin/
 gen/
 obj/
-libs/armeabi-v7a
+libs/armeabi-v7a/
 *~
 *.swp
 .classpath
