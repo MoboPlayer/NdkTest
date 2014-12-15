@@ -253,6 +253,36 @@ int open_subtitle(const char *file, int stream_index)
     return ret;
 }
 
+int is_subtitle_exits(const char *file)
+{
+	AVFormatContext *fmt_ctx = NULL;
+
+	ffmpeg.av_register_all();
+
+	/* open input file, and allocate format context */
+	if (ffmpeg.avformat_open_input(&fmt_ctx, file, NULL, NULL) < 0) {
+		fprintf(stderr, "Could not open source file %s\n", file);
+		return -1;
+	}
+
+	/* retrieve stream information */
+	if (ffmpeg.avformat_find_stream_info(fmt_ctx, NULL) < 0) {
+		fprintf(stderr, "Could not find stream information\n");
+		return -1;
+	}
+
+	int i,num = 0;
+	for( i = 0; i < fmt_ctx->nb_streams; i++ )
+	{
+		if( fmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE)
+		{
+			num++;
+		}
+	}
+
+	return num;
+}
+
 char *sj_get_raw_text_from_ssa(const char *ssa)
 {
     int n,intag,inescape;

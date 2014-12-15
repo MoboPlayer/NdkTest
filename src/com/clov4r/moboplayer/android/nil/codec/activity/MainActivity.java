@@ -76,12 +76,15 @@ public class MainActivity extends ActionBarActivity {
         Log.e("params", libpath+" "+filePath);
         StringBuffer sb = new StringBuffer();
         h.loadFFmpegLibs(libpath,libname);
+        
+        sb.append("字幕个数："+h.isSubtitleExits(filePath)+"\n");
+        
         String temp = h.openSubtitleFileInJNI(filePath,0);
         sb.append("open subtitle file :"+temp+"\n");
         /*
-         * 读取1000秒内的字幕，每500毫秒读取一次 
+         * 读取300秒内的字幕，每500毫秒读取一次 
          */
-        for(int i=0,j=0;i<1000*2;i++){
+        for(int i=0,j=0;i<300*2;i++){
         	String str = h.getSubtitleByTime(i*500);
         	if(str!=null){
 
@@ -98,8 +101,7 @@ public class MainActivity extends ActionBarActivity {
         tv.setText( sb.toString());
 //        Toast.makeText(this, tv.getText().toString(), Toast.LENGTH_LONG).show();
 				
-        Intent intent=new Intent(this,MoboThumbnailTestActivity.class);
-        startActivity(intent);
+//        
 	}
 
 	@Override
@@ -116,6 +118,8 @@ public class MainActivity extends ActionBarActivity {
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
 		if (id == R.id.action_settings) {
+			Intent intent=new Intent(this,MoboThumbnailTestActivity.class);
+	        startActivity(intent);
 			return true;
 		}
 		return super.onOptionsItemSelected(item);

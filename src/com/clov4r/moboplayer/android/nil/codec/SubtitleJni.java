@@ -25,24 +25,29 @@
 package com.clov4r.moboplayer.android.nil.codec;
 
 public class SubtitleJni extends BaseJNILib {
-	  /* A native method that is implemented by the
-     * 'hello-jni' native library, which is packaged
-     * with this application.
-     */
+
+	/**
+	 * 打开字幕文件
+	 * @param filePath
+	 * @param index
+	 * @return
+	 */
     public native String  openSubtitleFileInJNI(String filePath,int index);
 
+    /**
+     * 根据时间获取字幕内容
+     * @param time
+     * @return
+     */
     public native String  getSubtitleByTime(int time);
     
-    /* This is another native method declaration that is *not*
-     * implemented by 'hello-jni'. This is simply to show that
-     * you can declare as many native methods in your Java code
-     * as you want, their implementation is searched in the
-     * currently loaded native libraries only the first time
-     * you call them.
-     *
-     * Trying to call this function will result in a
-     * java.lang.UnsatisfiedLinkError exception !
+    
+    /**
+     * 字幕文件是否存在
+     * @param file
+     * @return 字幕个数 只要>0就表示存在
      */
-    public native String  unimplementedStringFromJNI();
+    public native int isSubtitleExits(String file);
+
 
 }

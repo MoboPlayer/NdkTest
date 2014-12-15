@@ -65,3 +65,15 @@ Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTime( JNIE
     return (*env)->NewStringUTF(env,subtitle);
 
 }
+jint
+Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_isSubtitleExits( JNIEnv* env,
+                                                  jobject thiz ,
+                                                  jstring jfile
+                                                  )
+{
+	char *file = (*env)->GetStringUTFChars(env, jfile, 0);
+
+	int is_exits = is_subtitle_exits(file);
+    return (jint)is_exits;
+
+}
