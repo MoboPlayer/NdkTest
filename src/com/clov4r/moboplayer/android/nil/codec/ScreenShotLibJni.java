@@ -32,7 +32,7 @@ import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
 import android.util.Log;
 
-public class ScreenShotLibJni extends BaseJNILib{
+public class ScreenShotLibJni extends BaseJNILib {
 
 	private static ScreenShotLibJni mScreenShotLib = null;
 
@@ -42,21 +42,40 @@ public class ScreenShotLibJni extends BaseJNILib{
 		return mScreenShotLib;
 	}
 
-	public native String getThumbnail(String videoName,
-			ByteBuffer bitmapData, int position, int width, int height);
+	public native String getThumbnail(String videoName, int position,
+			int width, int height);// ByteBuffer bitmapData,
 
-	public Bitmap getScreenShot(String videoName, String img_save_path,
+	OnBitmapCreatedListener mOnBitmapCreatedListener=null;
+	public void setOnBitmapCreatedListener(OnBitmapCreatedListener listener){
+		mOnBitmapCreatedListener=listener;
+	}
+	
+	public void getScreenShot(String videoName, String img_save_path,
 			int position, int width, int height) {
-		ByteBuffer bitmapData = ByteBuffer.allocateDirect(3000 * 1024);
-		String size = getThumbnail(videoName, bitmapData, position,
-				width, height);
+		// ByteBuffer bitmapData = null;//ByteBuffer.allocateDirect(3000 *
+		// 1024);
+		String size = getThumbnail(videoName, position, width, height);
+	}
+
+	public void createBitmap(ByteBuffer bitmapData, String size,String fileName) {
 		IntBuffer intBuffer = bitmapData.asIntBuffer();
-		String[] sizeArray=size.split(",");
+		String[] sizeArray = size.split(",");
 		int[] data = new int[intBuffer.limit()];
 		intBuffer.get(data);
-		
-		Bitmap bitmap=Bitmap.createBitmap(data, Integer.parseInt(sizeArray[0]), Integer.parseInt(sizeArray[1]), Config.ARGB_8888);
+		Bitmap bitmap = Bitmap.createBitmap(data,
+				Integer.parseInt(sizeArray[0]), Integer.parseInt(sizeArray[1]),
+				Config.ARGB_8888);
 		Log.e("ScreenShotLib", "" + size);
-		return bitmap;
+		// return bitmap;
+		if(mOnBitmapCreatedListener!=null)
+			mOnBitmapCreatedListener.onBitmapCreated(bitmap, fileName);
+	}
+
+	public void initByteBuffer(ByteBuffer buffer, int size) {
+		buffer = ByteBuffer.allocateDirect(size);
+	}
+	
+	public interface OnBitmapCreatedListener{
+		public void onBitmapCreated(Bitmap bitmap,String fileName);
 	}
 }
