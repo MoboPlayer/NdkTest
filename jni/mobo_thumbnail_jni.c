@@ -29,51 +29,77 @@
 #include <jni.h>
 #include "cmp_log.h"
 
-jstring Java_com_clov4r_moboplayer_android_nil_codec_ScreenShotLibJni_getThumbnail(JNIEnv* env,
-		jobject thiz, jstring video_name, jobject bitmap_data, jint gen_pos,
-		jint width, jint height) {
+jobject init_byte_buffer(JNIEnv* env, jobject thiz, int size) {
+	char* classname = "java/nio/ByteBuffer";
+	jclass byte_buffer_class = (*env)->FindClass(env, classname);
+	jmethodID method_id = (*env)->GetStaticMethodID(env, byte_buffer_class,
+			"allocateDirect", "(I)Ljava/nio/ByteBuffer;");
+	jobject bitmap_data = (*env)->CallStaticObjectMethod(env, byte_buffer_class,
+			method_id, size);
+	if (bitmap_data)
+		LOG("bytebuffer is not null");
+	else
+		LOG("bytebuffer is null");
+	return bitmap_data;
+}
+void create_bitmap(JNIEnv* env, jobject thiz, jobject bitmap_data, jstring size,
+		jstring video_name) {
+	jclass cls = (*env)->GetObjectClass(env, thiz);
+	jmethodID createBitmap = (*env)->GetMethodID(env, cls, "createBitmap",
+			"(Ljava/nio/ByteBuffer;Ljava/lang/String;Ljava/lang/String;)V");
+	(*env)->CallVoidMethod(env, thiz, createBitmap, bitmap_data, size,
+			video_name);
+}
+
+jstring Java_com_clov4r_moboplayer_android_nil_codec_ScreenShotLibJni_getThumbnail(
+		JNIEnv* env, jobject thiz, jstring video_name, jint gen_pos, jint width,
+		jint height) {
 	void *b = 0;
-	int img_width, img_height;
-    char *video_path = (*env)->GetStringUTFChars(env, video_name, 0);
-	b = (*env)->GetDirectBufferAddress(env,bitmap_data);
-	if (b) {
-		AVPicture* av_picture = get_rgb24_picture(video_path, gen_pos,
-				&img_width, &img_height);
-//		LOG("get_rgb24_picture----%d,%d,%d",img_width,img_height,av_picture->linesize[0]);
-		memcpy(b,av_picture->data[0],av_picture->linesize[0]*img_height);
-		free_avpicture(av_picture);
-		char res[50];
-		sprintf(res,"%d,%d",img_width,img_height);
-	    return (*env)->NewStringUTF(env,res);
-	}
+	int img_width = (int) width;
+	int img_height = (int) height;
+	char *video_path = (*env)->GetStringUTFChars(env, video_name, 0);
+	AVPicture* av_picture = get_rgb24_picture(video_path, gen_pos, &img_width,
+			&img_height);
+	int byte_count = av_picture->linesize[0] * img_height;
+	jobject bitmap_data = init_byte_buffer(env, thiz, byte_count);
+	b = (*env)->GetDirectBufferAddress(env, bitmap_data);
+	LOG("get_rgb24_picture----%d,%d,%d",img_width,img_height,av_picture->linesize[0]);
+	memcpy(b, av_picture->data[0], byte_count);
+
+	free_avpicture(av_picture);
+	char res[50];
+	sprintf(res, "%d,%d", img_width, img_height);
+	jstring screen_shot_size = (*env)->NewStringUTF(env, res);
+	create_bitmap(env, thiz, bitmap_data, screen_shot_size, video_name);
+	return screen_shot_size;
 
 }
 
 /**
  *
-extern jstring com_clov4r_ndktest_ScreenShotLib_nativeGetSubtitleBuffer(
-		JNIEnv* env, jobject thiz, jint h_index, jint current_time) {
-	char buffer_info[1024];
-	memset(buffer_info, 0, sizeof(buffer_info));
-	int cur_time_s = current_time / 1000;
-	LOG("sj_get_subtitle_buffer called");
-	sj_get_subtitle_buffer(buffer_info, cur_time_s, g_sub_data_p[h_index]);
-	LOG("subtitle buffer %s", buffer_info);
-	return env->NewStringUTF(buffer_info);
-}
+ extern jstring com_clov4r_ndktest_ScreenShotLib_nativeGetSubtitleBuffer(
+ JNIEnv* env, jobject thiz, jint h_index, jint current_time) {
+ char buffer_info[1024];
+ memset(buffer_info, 0, sizeof(buffer_info));
+ int cur_time_s = current_time / 1000;
+ LOG("sj_get_subtitle_buffer called");
+ sj_get_subtitle_buffer(buffer_info, cur_time_s, g_sub_data_p[h_index]);
+ LOG("subtitle buffer %s", buffer_info);
+ return env->NewStringUTF(buffer_info);
+ }
 
-extern jint com_clov4r_ndktest_ScreenShotLib_nativeSetSubtitleBuffer(
-		JNIEnv* env, jobject thiz, jobject buffer) {
-	void *b = NULL;
-	b = (*env)->GetDirectBufferAddress(buffer);
-	if (b) {
-		int h, w = 0;
-		sprintf(sr, "%d,%d", w, h);
-//        sj_set_subtitle_buffer(b, g_sub_data_p[h_index]);
-		AVPicture* av_picture = *get_rgb24_picture(&w);
-		return 1;
-	}
+ extern jint com_clov4r_ndktest_ScreenShotLib_nativeSetSubtitleBuffer(
+ JNIEnv* env, jobject thiz, jobject buffer) {
+ void *b = NULL;
+ b = (*env)->GetDirectBufferAddress(buffer);
+ if (b) {
+ int h, w = 0;
+ sprintf(sr, "%d,%d", w, h);
+ //        sj_set_subtitle_buffer(b, g_sub_data_p[h_index]);
+ AVPicture* av_picture = *get_rgb24_picture(&w);
+ return 1;
+ }
 
-	return -1;
-}
+ return -1;
+ }
  */

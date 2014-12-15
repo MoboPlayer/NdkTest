@@ -35,21 +35,28 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 
 import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni;
+import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni.OnBitmapCreatedListener;
 
 public class MoboThumbnailTestActivity extends Activity {
-//	final String videoName = Environment.getExternalStorageDirectory()+"/dy/ppkard.mp4";
-	final String videoName = Environment.getExternalStorageDirectory()+"/Movies/[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv";
+	// final String videoName =
+	// Environment.getExternalStorageDirectory()+"/dy/ppkard.mp4";
+	 final String videoName =
+	 Environment.getExternalStorageDirectory()+"/Movies/大熊免.rmvb";//[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv
+//	final String videoName = "/sdcard/movie/原子弹.flv";
 
-	final String img_save_path = Environment.getExternalStorageDirectory()+"/mobo_screen_shot_%d.png";
+	final String img_save_path = Environment.getExternalStorageDirectory()
+			+ "/mobo_screen_shot_%d.png";
 	int index = 1;
-	ImageView imageView=null;
+	LinearLayout layout;
+	ImageView imageView = null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		LinearLayout layout = new LinearLayout(this);
-		imageView=new ImageView(this);
-		
+		layout = new LinearLayout(this);
+		layout.setOrientation(LinearLayout.VERTICAL);
+		imageView = new ImageView(this);
+
 		Button button = new Button(this);
 		layout.addView(button);
 		layout.addView(imageView);
@@ -63,14 +70,34 @@ public class MoboThumbnailTestActivity extends Activity {
 		@Override
 		public void onClick(View v) {
 			// TODO Auto-generated method stub
-			Bitmap bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
-					String.format(img_save_path, index++), 350, 500, 350);
+			ScreenShotLibJni.getInstance().getScreenShot(videoName,
+					String.format(img_save_path, index++), 35, 150, 150);
+			ScreenShotLibJni.getInstance().setOnBitmapCreatedListener(
+					mOnBitmapCreatedListener);
+			// imageView.setImageBitmap(bitmap);
+			// Intent intent=new Intent();
+			// intent.setComponent(new
+			// ComponentName("com.clov4r.moboplayer.android.nil",
+			// "com.clov4r.moboplayer.android.nil.MainInterface"));
+			//
+			// intent.setData(Uri.parse(videoName));
+			// startActivity(intent);
+		}
+	};
+
+	OnBitmapCreatedListener mOnBitmapCreatedListener = new OnBitmapCreatedListener() {
+		@Override
+		public void onBitmapCreated(final Bitmap bitmap, String fileName) {
+			// TODO Auto-generated method stub
+			// runOnUiThread(new Runnable() {
+			// @Override
+			// public void run() {
+			// TODO Auto-generated method stub
+			layout.removeView(imageView);
+			layout.addView(imageView);
 			imageView.setImageBitmap(bitmap);
-//			Intent intent=new Intent();
-//			intent.setComponent(new ComponentName("com.clov4r.moboplayer.android.nil", "com.clov4r.moboplayer.android.nil.MainInterface"));
-//			
-//			intent.setData(Uri.parse(videoName));
-//			startActivity(intent);
+			// }
+			// });
 		}
 	};
 }
