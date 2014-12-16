@@ -28,7 +28,7 @@
 /* This is a native method
  * open FFmpeg lib and open subtitle file.
  */
-jstring
+jint
 Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileInJNI( JNIEnv* env,
                                                   jobject thiz ,
                                                   jstring jfile, int stream_index
@@ -47,9 +47,9 @@ Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileInJNI( 
 //	init_ffmpeg(lib_path,ffmpeg_filename);
 	//LOGI("lib_path = %s", lib_path);
 //
-	open_subtitle(file,stream_index);
+	int result = open_subtitle(file,stream_index);
 
-    return (*env)->NewStringUTF(env,"true");
+    return (jint)result;
 
 }
 /* This is a native method ,that is get subtitle by time ms.

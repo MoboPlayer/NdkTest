@@ -30,9 +30,9 @@ public class SubtitleJni extends BaseJNILib {
 	 * 打开字幕文件
 	 * @param filePath
 	 * @param index
-	 * @return
+	 * @return 小于0表示加载字幕失败
 	 */
-    public native String  openSubtitleFileInJNI(String filePath,int index);
+    public native int  openSubtitleFileInJNI(String filePath,int index);
 
     /**
      * 根据时间获取字幕内容

@@ -72,15 +72,15 @@ public class MainActivity extends ActionBarActivity {
         this.getFilesDir().getParent();
         String libpath = getFilesDir().getParent()+"/lib/";
         String libname = "libffmpeg_armv7_neon.so";
-        String filePath =  Environment.getExternalStorageDirectory()+"/Godzilla.srt";//videoName;//
+        String filePath =  Environment.getExternalStorageDirectory()+"/output_file_low.mkv";//videoName;//
         Log.e("params", libpath+" "+filePath);
         StringBuffer sb = new StringBuffer();
         h.loadFFmpegLibs(libpath,libname);
         
         sb.append("字幕个数："+h.isSubtitleExits(filePath)+"\n");
         
-        String temp = h.openSubtitleFileInJNI(filePath,0);
-        sb.append("open subtitle file :"+temp+"\n");
+        int temp = h.openSubtitleFileInJNI(filePath,0);
+        sb.append("open subtitle file :"+(temp<0?"失败":"成功")+"\n");
         /*
          * 读取300秒内的字幕，每500毫秒读取一次 
          */
