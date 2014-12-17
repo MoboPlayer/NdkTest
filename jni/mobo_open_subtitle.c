@@ -272,15 +272,54 @@ int is_subtitle_exits(const char *file)
 	}
 
 	int i,num = 0;
-	for( i = 0; i < fmt_ctx->nb_streams; i++ )
-	{
-		if( fmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE)
-		{
+	for ( i = 0; i < fmt_ctx->nb_streams; i++ ) {
+		if ( fmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE) {
 			num++;
 		}
 	}
-
+	ffmpeg.avformat_close_input(&fmt_ctx);
 	return num;
+}
+
+char *get_subtitle_language(const char *file,int index){
+	AVFormatContext *fmt_ctx = NULL;
+
+	ffmpeg.av_register_all();
+
+	/* open input file, and allocate format context */
+	if (ffmpeg.avformat_open_input(&fmt_ctx, file, NULL, NULL) < 0) {
+		fprintf(stderr, "Could not open source file %s\n", file);
+		return NULL;
+	}
+
+	/* retrieve stream information */
+	if (ffmpeg.avformat_find_stream_info(fmt_ctx, NULL) < 0) {
+		fprintf(stderr, "Could not find stream information\n");
+		return NULL;
+	}
+
+	char result[100];
+	int i,num;
+	for ( i = 0,num = 0; i < fmt_ctx->nb_streams; i++ ) {
+		if (fmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE) {
+			if( index == num++) {
+
+				AVStream *st = fmt_ctx->streams[i];
+				AVDictionaryEntry *lang = ffmpeg.av_dict_get(st->metadata, "title", NULL, 0);
+				if(lang){
+					strcpy(result,lang->value);
+				} else {
+					result[0] = 0;
+				}
+
+				break;
+			}
+		}
+	}
+
+	ffmpeg.avformat_close_input(&fmt_ctx);
+
+	return result;
 }
 
 char *sj_get_raw_text_from_ssa(const char *ssa)
