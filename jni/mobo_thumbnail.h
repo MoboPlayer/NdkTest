@@ -28,7 +28,7 @@
 
 #include "cmp_ffmpeg.h"
 
-int gen_thumbnail(const char *file, int gen_second) ;
+int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) ;
 AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
-		int *height) ;
+		int *height, int gen_IDR_frame) ;
 #endif

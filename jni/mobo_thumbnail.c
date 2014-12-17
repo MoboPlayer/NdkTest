@@ -75,7 +75,7 @@ static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
 }
 
 //use ffmpeg generate file's thumbnail at gen_second(second)
-int gen_thumbnail(const char *file, int gen_second) {
+int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 	int ret = 0;
 	AVPacket packet;
 	int got_frame = 0;
@@ -120,7 +120,7 @@ int gen_thumbnail(const char *file, int gen_second) {
 		goto end;
 	}
 
-	if (gen_second > fmt_ctx->duration / AV_TIME_BASE)
+	if (gen_IDR_frame||gen_second > fmt_ctx->duration / AV_TIME_BASE)
 		gen_second = 0;
 
 	seek_target = gen_second * AV_TIME_BASE;
@@ -145,20 +145,27 @@ int gen_thumbnail(const char *file, int gen_second) {
 			ffmpeg.avcodec_decode_video2(video_dec_ctx, frame, &got_frame,
 					&packet);
 			if (got_frame) {
-				LOG("lyw-thumbnail++%lld++%lld", frame->pkt_pts, seek_target);
-				int64_t current_time = ffmpeg.av_rescale_q(frame->pkt_pts,
-						video_stream->time_base, AV_TIME_BASE_Q);
+				if (!gen_IDR_frame) {
+//				LOG("lyw-thumbnail++%lld++%lld", frame->pkt_pts, seek_target);
+					int64_t current_time = ffmpeg.av_rescale_q(frame->pkt_pts,
+							video_stream->time_base, AV_TIME_BASE_Q);
 //				float time_diff = (float) current_time / AV_TIME_BASE
 //						- gen_second;
-				int64_t time_diff = current_time / AV_TIME_BASE - gen_second;
-				LOG("lyw-thumbnail-->time_diff=%lld", time_diff);
+					int64_t time_diff = current_time / AV_TIME_BASE
+							- gen_second;
+//				LOG("lyw-thumbnail-->time_diff=%lld", time_diff);
 //				if (time_diff > -0.03 && time_diff < 0.03) {
-				if (time_diff >= 0) {
-					got_right_frame = 1;
-					LOG("lyw-thumbnail-->pict_type=%d", frame->pict_type);
-				} else if (time_diff > 1) {
-					ffmpeg.av_free_packet(&packet);
-					break;
+					if (time_diff >= 0) {
+						got_right_frame = 1;
+//					LOG("lyw-thumbnail-->pict_type=%d", frame->pict_type);
+					} else if (time_diff > 1) {
+						ffmpeg.av_free_packet(&packet);
+						break;
+					}
+				} else {
+					if(frame->pict_type==AV_PICTURE_TYPE_I){
+						got_right_frame = 1;
+					}
 				}
 			}
 		}
@@ -183,13 +190,13 @@ int gen_thumbnail(const char *file, int gen_second) {
 }
 
 AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
-		int *height) {
+		int *height, int gen_IDR_frame) {
 	int ret = 0;
 	frame = ffmpeg.av_frame_alloc();
 	if (!frame)
 		return NULL;
 
-	ret = gen_thumbnail(file, gen_second);
+	ret = gen_thumbnail(file, gen_second, gen_IDR_frame);
 
 	if (ret < 0) {
 		if (frame)

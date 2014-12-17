@@ -87,7 +87,8 @@ public class MoboThumbnailTestActivity extends Activity {
 
 	OnBitmapCreatedListener mOnBitmapCreatedListener = new OnBitmapCreatedListener() {
 		@Override
-		public void onBitmapCreated(final Bitmap bitmap, String fileName) {
+		public void onBitmapCreated(final Bitmap bitmap, String fileName,
+				String screenshotSavePath) {
 			// TODO Auto-generated method stub
 			// runOnUiThread(new Runnable() {
 			// @Override
