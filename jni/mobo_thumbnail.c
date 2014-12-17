@@ -197,8 +197,7 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		return NULL;
 	}
 
-	ret = ffmpeg.avpicture_alloc(&picture, PIX_FMT_ARGB, *width, //video_dec_ctx->width
-			*height); //video_dec_ctx->height
+	ret = ffmpeg.avpicture_alloc(&picture, AV_PIX_FMT_ARGB, *width, *height);
 
 	if (ret < 0) {
 		if (frame)
@@ -206,13 +205,9 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		return NULL;
 	}
 
-//	*width = video_dec_ctx->width/2;
-//	*height = video_dec_ctx->height/2;
-
 	sws_context = ffmpeg.sws_getCachedContext(sws_context, video_dec_ctx->width,
-			video_dec_ctx->height, video_dec_ctx->pix_fmt, *width, //video_dec_ctx->width
-			*height, PIX_FMT_ARGB, SWS_FAST_BILINEAR, NULL, NULL, //video_dec_ctx->height
-			NULL);
+			video_dec_ctx->height, video_dec_ctx->pix_fmt, *width, *height,
+			AV_PIX_FMT_ARGB, SWS_FAST_BILINEAR, NULL, NULL, NULL);
 
 	ffmpeg.sws_scale(sws_context, (const uint8_t **) frame->data,
 			frame->linesize, 0, video_dec_ctx->height, picture.data,

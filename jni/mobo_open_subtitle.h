@@ -42,5 +42,5 @@ int open_subtitle(const char *file, int stream_index);
 char *get_subtitle_ontime(int cur_time);
 void close_subtitle();
 int is_subtitle_exits(const char *file);
-
+char *get_subtitle_language(const char *file,int i);
 #endif
