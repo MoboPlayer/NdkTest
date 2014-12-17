@@ -40,9 +40,9 @@ import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni.OnBitmapCreatedL
 public class MoboThumbnailTestActivity extends Activity {
 	// final String videoName =
 	// Environment.getExternalStorageDirectory()+"/dy/ppkard.mp4";
-	 final String videoName =
-	 Environment.getExternalStorageDirectory()+"/Movies/大熊免.rmvb";//[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv
-//	final String videoName = "/sdcard/movie/原子弹.flv";
+//	 final String videoName =
+//	 Environment.getExternalStorageDirectory()+"/Movies/大熊免.rmvb";//[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv
+	final String videoName = "/sdcard/movie/原子弹.flv";
 
 	final String img_save_path = Environment.getExternalStorageDirectory()
 			+ "/mobo_screen_shot_%d.png";
@@ -71,7 +71,7 @@ public class MoboThumbnailTestActivity extends Activity {
 		public void onClick(View v) {
 			// TODO Auto-generated method stub
 			ScreenShotLibJni.getInstance().getScreenShot(videoName,
-					String.format(img_save_path, index++), 35, 150, 150);
+					 35, 150, 150);
 			ScreenShotLibJni.getInstance().setOnBitmapCreatedListener(
 					mOnBitmapCreatedListener);
 			// imageView.setImageBitmap(bitmap);

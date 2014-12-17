@@ -86,12 +86,13 @@ int gen_thumbnail(const char *file, int gen_second) {
 	ffmpeg.av_register_all();
 
 	/* open input file, and allocate format context */
-	if ((ret=ffmpeg.avformat_open_input(&fmt_ctx, src_filename, NULL, NULL)) < 0) {
+	if ((ret = ffmpeg.avformat_open_input(&fmt_ctx, src_filename, NULL, NULL))
+			< 0) {
 		fprintf(stderr, "Could not open source file %s\n", src_filename);
-		 char error[500];
-		 ffmpeg.av_strerror(ret, error, 500);
+		char error[500];
+		ffmpeg.av_strerror(ret, error, 500);
 
-		LOG("gen_thumbnail---->%s",error);
+		LOG("gen_thumbnail---->%s", error);
 		return -1;
 	}
 
@@ -125,8 +126,12 @@ int gen_thumbnail(const char *file, int gen_second) {
 	seek_target = gen_second * AV_TIME_BASE;
 	seek_target = ffmpeg.av_rescale_q(seek_target, AV_TIME_BASE_Q,
 			video_stream->time_base);
-	ffmpeg.avformat_seek_file(fmt_ctx, video_stream_idx, 0, seek_target, INT64_MAX,
-			AVSEEK_FLAG_FRAME);
+//	ffmpeg.avformat_seek_file(fmt_ctx, video_stream_idx, 0, seek_target,
+//			seek_target, //INT64_MAX
+//			AVSEEK_FLAG_BACKWARD|AVSEEK_FLAG_ANY); //AVSEEK_FLAG_FRAME
+
+	ffmpeg.av_seek_frame(fmt_ctx, video_stream_idx, seek_target,
+			AVSEEK_FLAG_BACKWARD); // | AVSEEK_FLAG_FRAME
 
 	if (!frame) {
 		fprintf(stderr, "Could not find frame\n");
@@ -134,18 +139,44 @@ int gen_thumbnail(const char *file, int gen_second) {
 		goto end;
 	}
 
-	while (!got_frame && ffmpeg.av_read_frame(fmt_ctx, &packet) >= 0) {
-
+	int got_right_frame = 0;
+	while (!got_right_frame && ffmpeg.av_read_frame(fmt_ctx, &packet) >= 0) {
 		if (packet.stream_index == video_stream_idx) {
-			ffmpeg.avcodec_decode_video2(video_dec_ctx, frame, &got_frame, &packet);
+			ffmpeg.avcodec_decode_video2(video_dec_ctx, frame, &got_frame,
+					&packet);
+			if (got_frame) {
+				LOG("lyw-thumbnail++%lld++%lld", frame->pkt_pts, seek_target);
+				int64_t current_time = ffmpeg.av_rescale_q(frame->pkt_pts,
+						video_stream->time_base, AV_TIME_BASE_Q);
+//				float time_diff = (float) current_time / AV_TIME_BASE
+//						- gen_second;
+				int64_t time_diff = current_time / AV_TIME_BASE - gen_second;
+				LOG("lyw-thumbnail-->time_diff=%lld", time_diff);
+//				if (time_diff > -0.03 && time_diff < 0.03) {
+				if (time_diff >= 0) {
+					got_right_frame = 1;
+					LOG("lyw-thumbnail-->pict_type=%d", frame->pict_type);
+				} else if (time_diff > 1) {
+					ffmpeg.av_free_packet(&packet);
+					break;
+				}
+			}
 		}
 
+//	ffmpeg.avcodec_flush_buffers(video_dec_ctx);
+//	while (!got_frame && ffmpeg.av_read_frame(fmt_ctx, &packet) >= 0) {
+//		if (packet.stream_index == video_stream_idx) {
+//			if ((packet.pts - seek_target) / AV_TIME_BASE < 1) {
+//				ffmpeg.avcodec_decode_video2(video_dec_ctx, frame, &got_frame,
+//						&packet);
+//			}
+//		}
+//
 		ffmpeg.av_free_packet(&packet);
 	}
 	return ret;
 
-end:
-	ffmpeg.avcodec_close(video_dec_ctx);
+	end: ffmpeg.avcodec_close(video_dec_ctx);
 	ffmpeg.avformat_close_input(&fmt_ctx);
 
 	return ret;
@@ -166,8 +197,8 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		return NULL;
 	}
 
-	ret = ffmpeg.avpicture_alloc(&picture, PIX_FMT_ARGB, *width,//video_dec_ctx->width
-			*height);//video_dec_ctx->height
+	ret = ffmpeg.avpicture_alloc(&picture, PIX_FMT_ARGB, *width, //video_dec_ctx->width
+			*height); //video_dec_ctx->height
 
 	if (ret < 0) {
 		if (frame)
@@ -179,12 +210,13 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 //	*height = video_dec_ctx->height/2;
 
 	sws_context = ffmpeg.sws_getCachedContext(sws_context, video_dec_ctx->width,
-			video_dec_ctx->height, video_dec_ctx->pix_fmt, *width ,//video_dec_ctx->width
-			*height, PIX_FMT_ARGB, SWS_FAST_BILINEAR, NULL, NULL,//video_dec_ctx->height
+			video_dec_ctx->height, video_dec_ctx->pix_fmt, *width, //video_dec_ctx->width
+			*height, PIX_FMT_ARGB, SWS_FAST_BILINEAR, NULL, NULL, //video_dec_ctx->height
 			NULL);
 
-	ffmpeg.sws_scale(sws_context, (const uint8_t **) frame->data, frame->linesize, 0,
-			video_dec_ctx->height, picture.data, picture.linesize);
+	ffmpeg.sws_scale(sws_context, (const uint8_t **) frame->data,
+			frame->linesize, 0, video_dec_ctx->height, picture.data,
+			picture.linesize);
 
 	if (frame) {
 		ffmpeg.av_frame_free(&frame);
@@ -200,7 +232,7 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 	return p;
 }
 
-void free_avpicture(AVPicture *picture){
+void free_avpicture(AVPicture *picture) {
 	ffmpeg.avpicture_free(picture);
 }
 

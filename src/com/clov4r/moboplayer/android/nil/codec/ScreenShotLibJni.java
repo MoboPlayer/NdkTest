@@ -50,7 +50,7 @@ public class ScreenShotLibJni extends BaseJNILib {
 		mOnBitmapCreatedListener=listener;
 	}
 	
-	public void getScreenShot(String videoName, String img_save_path,
+	public void getScreenShot(String videoName,
 			int position, int width, int height) {
 		// ByteBuffer bitmapData = null;//ByteBuffer.allocateDirect(3000 *
 		// 1024);
