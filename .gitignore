@@ -12,3 +12,4 @@ project.properties
 .settings/
 rawso
 org.eclipse.core.resources.prefs
+libmobo_jni_util.so
