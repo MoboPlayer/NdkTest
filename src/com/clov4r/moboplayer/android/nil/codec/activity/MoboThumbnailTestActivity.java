@@ -70,12 +70,12 @@ public class MoboThumbnailTestActivity extends Activity {
 		@Override
 		public void onClick(View v) {
 			// TODO Auto-generated method stub
+			ScreenShotLibJni.getInstance().setOnBitmapCreatedListener(
+					mOnBitmapCreatedListener);
 //			ScreenShotLibJni.getInstance().getScreenShot(videoName,
 //					 35, 150, 150);
 			ScreenShotLibJni.getInstance().getIDRFrameThumbnail(videoName,"/sdcard/test.png",
 					 350, 350);
-			ScreenShotLibJni.getInstance().setOnBitmapCreatedListener(
-					mOnBitmapCreatedListener);
 			// imageView.setImageBitmap(bitmap);
 			// Intent intent=new Intent();
 			// intent.setComponent(new
