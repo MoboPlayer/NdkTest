@@ -64,8 +64,9 @@ public class ScreenShotLibJni extends BaseJNILib {
 		getIDRThumbnail(videoPath, width, height);
 	}
 
-	public void getScreenShot(String videoPath, int position, int width,
+	public void getScreenShot(String videoPath, String thumbnailSavePath,int position, int width,
 			int height) {
+		pathMap.put(videoPath, thumbnailSavePath);
 		getThumbnail(videoPath, position, width, height);
 	}
 
