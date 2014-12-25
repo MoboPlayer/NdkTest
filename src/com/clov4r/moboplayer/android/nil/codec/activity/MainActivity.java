@@ -48,6 +48,11 @@
  */
 package com.clov4r.moboplayer.android.nil.codec.activity;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
@@ -72,7 +77,8 @@ public class MainActivity extends ActionBarActivity {
         this.getFilesDir().getParent();
         String libpath = getFilesDir().getParent()+"/lib/";
         String libname = "libffmpeg_armv7_neon.so";
-        String filePath =  Environment.getExternalStorageDirectory()+"/output_file_low.mkv";//videoName;//Godzilla.srt//output_file_low.mkv
+        String filePath =  Environment.getExternalStorageDirectory()+"/Gone.srt";//videoName;Gone.srt//Godzilla.srt//output_file_low.mkv
+        
         Log.e("params", libpath+" "+filePath);
         StringBuffer sb = new StringBuffer();
         h.loadFFmpegLibs(libpath,libname);
@@ -84,7 +90,8 @@ public class MainActivity extends ActionBarActivity {
 //        	sb.append("第"+i+"个字幕："+h.getSubtitleLanguage(filePath, i)+"\n");
 //        }
         
-        int temp = h.openSubtitleFileInJNI(filePath,0);
+        
+        int temp = h.openSubtitleFile(filePath,0);
         
         sb.append("open subtitle file :"+(temp<0?"失败":"成功")+"\n");
         /*
@@ -93,10 +100,8 @@ public class MainActivity extends ActionBarActivity {
         for(int i=0,j=0;i<300*2;i++){
         	String str = h.getSubtitleByTime(i*500);
         	if(str!=null){
-
-        		Log.e("subtitle", str==null?" null ": str);
         		if(!sb.toString().endsWith("subtitle:"+str+"\n")){
-        			
+            		Log.e("subtitle", str==null?" null ": str);
         			sb.append("index:"+(++j)+" time:"+i/2+"s subtitle:"+str+"\n");
         		}
         			
@@ -109,6 +114,41 @@ public class MainActivity extends ActionBarActivity {
         h.closeSubtitle();
 	}
 
+	
+	private boolean isUtf8Encode(String filePath) {
+		if(!filePath.endsWith("srt")) {
+			return true;
+		}
+		InputStream in = null;
+		try {
+			File file = new File(filePath);  
+			in= new java.io.FileInputStream(file);  
+			byte[] b = new byte[3];  
+			in.read(b);  
+			in.close();  
+			if (b[0] == -17 && b[1] == -69 && b[2] == -65)  
+			    return true;  
+			else  
+			    return false;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return true;
+		} finally {
+			if(in != null) {
+				try {
+					in.close();
+				} catch (Exception e) {
+				}
+			}
+		}
+	}
+	
+	void load() {
+		String libpath = getFilesDir().getParent()+"/lib/";
+        String libname = "libffmpeg_armv7_neon.so";
+        SubtitleJni.getInstance().loadFFmpegLibs(libpath,libname);
+	}
+	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
