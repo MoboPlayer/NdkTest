@@ -75,7 +75,7 @@ public class MoboThumbnailTestActivity extends Activity {
 //			ScreenShotLibJni.getInstance().getScreenShot(videoName,
 //					 35, 150, 150);
 			ScreenShotLibJni.getInstance().getIDRFrameThumbnail(videoName,"/sdcard/test.png",
-					 350, 350);
+					 0, 0);
 			// imageView.setImageBitmap(bitmap);
 			// Intent intent=new Intent();
 			// intent.setComponent(new

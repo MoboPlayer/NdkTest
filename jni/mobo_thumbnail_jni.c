@@ -54,15 +54,15 @@ void create_bitmap(JNIEnv* env, jobject thiz, jobject bitmap_data, jstring size,
 jstring get_thumbnail(JNIEnv* env, jobject thiz, jstring video_name, jint gen_pos, jint width,
 		jint height, int gen_IDR_frame){
 	void *b = 0;
-	int img_width = (int) width;
-	int img_height = (int) height;
+	int img_width = (int) width<=0?-1:width;
+	int img_height = (int) height<=0?-1:height;
 	char *video_path = (*env)->GetStringUTFChars(env, video_name, 0);
 	AVPicture* av_picture = get_rgb24_picture(video_path, gen_pos, &img_width,
 			&img_height,gen_IDR_frame);
 	int byte_count = av_picture->linesize[0] * img_height;
 	jobject bitmap_data = init_byte_buffer(env, thiz, byte_count);
 	b = (*env)->GetDirectBufferAddress(env, bitmap_data);
-	LOG("get_rgb24_picture----%d,%d,%d",img_width,img_height,av_picture->linesize[0]);
+//	LOG("get_rgb24_picture----%d,%d,%d",img_width,img_height,av_picture->linesize[0]);
 	memcpy(b, av_picture->data[0], byte_count);
 
 	free_avpicture(av_picture);

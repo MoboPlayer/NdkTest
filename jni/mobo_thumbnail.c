@@ -215,6 +215,11 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		return NULL;
 	}
 
+	if (*width <= 0 || *height <= 0) {
+		*width = (video_dec_ctx->width);
+		*height = (video_dec_ctx->height);
+	}
+
 	ret = ffmpeg.avpicture_alloc(&picture, AV_PIX_FMT_ARGB, *width, *height);
 
 	if (ret < 0) {
