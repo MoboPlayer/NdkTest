@@ -63,10 +63,21 @@ public class SubtitleJni extends BaseJNILib {
     	return openSubtitleFileInJNI(filePath, index, subtiltle_index);
     }
     
+    public int openSubtitleFile(String filePath,int index) {
+    	return openSubtitleFile(filePath, index, 0);
+    }
+    
     /**
      * close subtitle file
      */
     public native void closeSubtitle(int subtiltle_index);
+    
+    /**
+     * close subtitle file
+     */
+    public void closeSubtitle() {
+    	closeSubtitle(0);
+    }
     
     /**
      * 根据时间获取字幕内容
@@ -75,6 +86,14 @@ public class SubtitleJni extends BaseJNILib {
      */
     public native String  getSubtitleByTime(int time, int subtiltle_index);
     
+    /**
+     * 根据时间获取字幕内容
+     * @param time
+     * @return
+     */
+    public String  getSubtitleByTime(int time) {
+    	return getSubtitleByTime(time, 0);
+    }
     
     /**
      * 字幕文件是否存在
