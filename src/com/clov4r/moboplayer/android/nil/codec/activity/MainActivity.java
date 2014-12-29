@@ -91,14 +91,14 @@ public class MainActivity extends ActionBarActivity {
 //        }
         
         
-        int temp = h.openSubtitleFile(filePath,0);
+        int temp = h.openSubtitleFile(filePath,0,0);
         
         sb.append("open subtitle file :"+(temp<0?"失败":"成功")+"\n");
         /*
          * 读取300秒内的字幕，每500毫秒读取一次 
          */
         for(int i=0,j=0;i<300*2;i++){
-        	String str = h.getSubtitleByTime(i*500);
+        	String str = h.getSubtitleByTime(i*500,0);
         	if(str!=null){
         		if(!sb.toString().endsWith("subtitle:"+str+"\n")){
             		Log.e("subtitle", str==null?" null ": str);
@@ -111,7 +111,7 @@ public class MainActivity extends ActionBarActivity {
        
         tv.setText( sb.toString());
 
-        h.closeSubtitle();
+        h.closeSubtitle(0);
 	}
 
 	

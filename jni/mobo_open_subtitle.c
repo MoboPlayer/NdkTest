@@ -26,11 +26,12 @@
 
 #define DEFAULT_SUBTITLE_SIZE   2000
 
+#define MAX_SUBTITLES 10
 
 extern ffmpeg_func_t ffmpeg;
 
 
-sub_data_p g_sub_p;
+sub_data_p g_sub_p[MAX_SUBTITLES];
 char *sj_get_raw_text_from_ssa(const char *ssa);
 
 static int open_codec_context(sub_data_p sub_p, int index, enum AVMediaType type)
@@ -130,27 +131,27 @@ int binary_search(AVSubtitle *a, int key, int n)
     return -1;
 }
 
-void close_subtitle()
+void close_subtitle(int subtiltle_index)
 {
-    if (g_sub_p) {
+    if (g_sub_p[subtiltle_index]) {
     	int i;// error: 'for' loop initial declarations are only allowed in C99 or C11 mode
-        for (i = 0; i < g_sub_p->subtitle_size; i++) {
-            AVSubtitle *sp = &(g_sub_p->subtitles_array[i]);
+        for (i = 0; i < g_sub_p[subtiltle_index]->subtitle_size; i++) {
+            AVSubtitle *sp = &(g_sub_p[subtiltle_index]->subtitles_array[i]);
            ffmpeg.avsubtitle_free(sp);
         }
-        ffmpeg.av_freep(g_sub_p);
+        ffmpeg.av_freep(g_sub_p[subtiltle_index]);
     }
 }
 
-char *get_subtitle_ontime(int cur_time)
+char *get_subtitle_ontime(int cur_time, int subtiltle_index)
 {
-    if (!g_sub_p) {
+    if (!g_sub_p[subtiltle_index]) {
         return NULL;
     }
     int array_index = -1;
 //    array_index = cur_time;
     char *subtitle_text = NULL;
-    sub_data_p sub_p = g_sub_p;
+    sub_data_p sub_p = g_sub_p[subtiltle_index];
     array_index = binary_search(sub_p->subtitles_array, cur_time, sub_p->subtitle_index);
     AVSubtitle *subtitle = NULL;
     if (array_index >= 0) {
@@ -215,12 +216,12 @@ int subtitle_read_decode(sub_data_p sub_p)
     return ret;
 }
 
-int open_subtitle(const char *file, int stream_index)
+int open_subtitle(const char *file, int stream_index, int subtiltle_index)
 {
     AVFormatContext *fmt_ctx = NULL;
     int ret = 0;
-    g_sub_p = ffmpeg.av_mallocz(sizeof(SubtitleData));
-    sub_data_p sub_p = g_sub_p;
+    g_sub_p[subtiltle_index] = ffmpeg.av_mallocz(sizeof(SubtitleData));
+    sub_data_p sub_p = g_sub_p[subtiltle_index];
     
     ffmpeg.av_register_all();
 
@@ -248,7 +249,7 @@ int open_subtitle(const char *file, int stream_index)
     ffmpeg.avcodec_close(sub_p->dec_ctx);
     ffmpeg.avformat_close_input(&sub_p->fmt_ctx);
     if (ret < 0) {
-        ffmpeg.av_freep(g_sub_p);
+        ffmpeg.av_freep(g_sub_p[subtiltle_index]);
     }
     return ret;
 }

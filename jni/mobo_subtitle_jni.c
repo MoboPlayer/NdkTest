@@ -27,32 +27,6 @@
 
 jstring ctojstring(JNIEnv *env, char* tmpstr)
 {
-//	jclass Class_string;
-//	jmethodID mid_String, mid_getBytes;
-//	jbyteArray bytes;
-//	jbyte* log_utf8;
-//	jstring codetype, jstr;
-//	Class_string = (*env)->FindClass(env, "java/lang/String"); //获取class
-////先将gbk字符串转为java里的string格式
-//	mid_String = (*env)->GetMethodID(env, Class_string, "<init>",
-//			"([BLjava/lang/String;)V");
-//	bytes = (*env)->NewByteArray(env, strlen(tmpstr));
-//	(*env)->SetByteArrayRegion(env, bytes, 0, strlen(tmpstr), (jbyte*) tmpstr);
-//	codetype = (*env)->NewStringUTF(env, "utf-8");
-//	jstr = (jstring) (*env)->NewObject(env, Class_string, mid_String, bytes,
-//			codetype);
-//
-//	(*env)->DeleteLocalRef(env, bytes);
-//
-////再将string变utf-8字符串。
-//	mid_getBytes = (*env)->GetMethodID(env, Class_string, "getBytes",
-//			"(Ljava/lang/String;)[B");
-//	codetype = (*env)->NewStringUTF(env, "utf-8");
-//	bytes = (jbyteArray) (*env)->CallObjectMethod(env, jstr, mid_getBytes,
-//			codetype);
-//	log_utf8 = (*env)->GetByteArrayElements(env, bytes, JNI_FALSE);
-//
-//	return (*env)->NewStringUTF(env, log_utf8);
 
 	jclass strClass = (*env)->FindClass(env, "[Ljava/lang/String;");
 	jmethodID ctorID = (*env)->GetMethodID(env, strClass, "()", "([BLjava/lang/String;)V");
@@ -66,19 +40,19 @@ jstring ctojstring(JNIEnv *env, char* tmpstr)
  * open FFmpeg lib and open subtitle file.
  */
 jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileInJNI(
-		JNIEnv* env, jobject thiz, jstring jfile, int stream_index) {
+		JNIEnv* env, jobject thiz, jstring jfile, int stream_index, int subtiltle_index) {
 
 	char *file = (*env)->GetStringUTFChars(env, jfile, 0);
 
-	int result = open_subtitle(file, stream_index);
+	int result = open_subtitle(file, stream_index, subtiltle_index);
 
 	return (jint) result;
 
 }
 
 void Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_closeSubtitle(
-		JNIEnv* env, jobject thiz) {
-	close_subtitle();
+		JNIEnv* env, jobject thiz, int subtiltle_index) {
+	close_subtitle(subtiltle_index);
 
 }
 
@@ -99,8 +73,8 @@ jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleLang
  *
  */
 jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTime(
-		JNIEnv* env, jobject thiz, int current_time) {
-	char *subtitle = get_subtitle_ontime(current_time);
+		JNIEnv* env, jobject thiz, int current_time, int subtiltle_index) {
+	char *subtitle = get_subtitle_ontime(current_time, subtiltle_index);
 	return (*env)->NewStringUTF(env, subtitle);
 
 }
