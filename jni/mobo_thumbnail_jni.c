@@ -51,24 +51,30 @@ void create_bitmap(JNIEnv* env, jobject thiz, jobject bitmap_data, jstring size,
 			video_name);
 }
 
-jstring get_thumbnail(JNIEnv* env, jobject thiz, jstring video_name, jint gen_pos, jint width,
-		jint height, int gen_IDR_frame){
+jstring get_thumbnail(JNIEnv* env, jobject thiz, jstring video_name,
+		jint gen_pos, jint width, jint height, int gen_IDR_frame) {
+//	LOG("get_rgb24_picture---get_thumbnail start...");
 	void *b = 0;
-	int img_width = (int) width<=0?-1:width;
-	int img_height = (int) height<=0?-1:height;
+	jstring screen_shot_size;
+	jobject bitmap_data = NULL;
+	int img_width = (int) width <= 0 ? -1 : width;
+	int img_height = (int) height <= 0 ? -1 : height;
 	char *video_path = (*env)->GetStringUTFChars(env, video_name, 0);
 	AVPicture* av_picture = get_rgb24_picture(video_path, gen_pos, &img_width,
-			&img_height,gen_IDR_frame);
-	int byte_count = av_picture->linesize[0] * img_height;
-	jobject bitmap_data = init_byte_buffer(env, thiz, byte_count);
-	b = (*env)->GetDirectBufferAddress(env, bitmap_data);
-//	LOG("get_rgb24_picture----%d,%d,%d",img_width,img_height,av_picture->linesize[0]);
-	memcpy(b, av_picture->data[0], byte_count);
+			&img_height, gen_IDR_frame);
+	if (av_picture) {
+		int byte_count = av_picture->linesize[0] * img_height;
+		bitmap_data = init_byte_buffer(env, thiz, byte_count);
+		b = (*env)->GetDirectBufferAddress(env, bitmap_data);
+//	LOG("get_rgb24_picture----%d,%d,%d", img_width, img_height, av_picture->linesize[0]);
+		memcpy(b, av_picture->data[0], byte_count);
 
-	free_avpicture(av_picture);
+		free_avpicture(av_picture);
+	} else
+		LOG("gen_thumbnail---get picture data null...");
 	char res[50];
 	sprintf(res, "%d,%d", img_width, img_height);
-	jstring screen_shot_size = (*env)->NewStringUTF(env, res);
+	screen_shot_size = (*env)->NewStringUTF(env, res);
 	create_bitmap(env, thiz, bitmap_data, screen_shot_size, video_name);
 	return screen_shot_size;
 }
@@ -76,14 +82,13 @@ jstring get_thumbnail(JNIEnv* env, jobject thiz, jstring video_name, jint gen_po
 jstring Java_com_clov4r_moboplayer_android_nil_codec_ScreenShotLibJni_getThumbnail(
 		JNIEnv* env, jobject thiz, jstring video_name, jint gen_pos, jint width,
 		jint height) {
-	return get_thumbnail(env,thiz,video_name,gen_pos,width,height,0);
+	return get_thumbnail(env, thiz, video_name, gen_pos, width, height, 0);
 
 }
 
 jstring Java_com_clov4r_moboplayer_android_nil_codec_ScreenShotLibJni_getIDRThumbnail(
-		JNIEnv* env, jobject thiz, jstring video_name, jint width,
-		jint height) {
-	jstring size=get_thumbnail(env,thiz,video_name,0,width,height,1);
+		JNIEnv* env, jobject thiz, jstring video_name, jint width, jint height) {
+	jstring size = get_thumbnail(env, thiz, video_name, 0, width, height, 1);
 	return size;
 }
 

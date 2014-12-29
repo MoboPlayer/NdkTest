@@ -40,6 +40,7 @@ extern ffmpeg_func_t ffmpeg;
 
 static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
 		enum AVMediaType type) {
+//	LOG("gen_thumbnail---open_codec_context start...");
 	int ret;
 	AVStream *st;
 	AVCodecContext *dec_ctx = NULL;
@@ -47,10 +48,11 @@ static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
 	AVDictionary *opts = NULL;
 
 	ret = ffmpeg.av_find_best_stream(fmt_ctx, type, -1, -1, NULL, 0);
+//	LOG("gen_thumbnail---av_find_best_stream %d", ret);
 	if (ret < 0) {
 		fprintf(stderr, "Could not find %s stream in input file '%s'\n",
 				ffmpeg.av_get_media_type_string(type), src_filename);
-		return ret;
+//		return ret;
 	} else {
 		*stream_idx = ret;
 		st = fmt_ctx->streams[*stream_idx];
@@ -58,6 +60,7 @@ static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
 		/* find decoder for the stream */
 		dec_ctx = st->codec;
 		dec = ffmpeg.avcodec_find_decoder(dec_ctx->codec_id);
+		LOG("gen_thumbnail---avcodec_find_decoder %d", ret);
 		if (!dec) {
 			fprintf(stderr, "Failed to find %s codec\n",
 					ffmpeg.av_get_media_type_string(type));
@@ -71,11 +74,12 @@ static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 //use ffmpeg generate file's thumbnail at gen_second(second)
 int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
+//	LOG("gen_thumbnail---gen_thumbnail start...");
 	int ret = 0;
 	AVPacket packet;
 	int got_frame = 0;
@@ -92,9 +96,10 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 		char error[500];
 		ffmpeg.av_strerror(ret, error, 500);
 
-		LOG("gen_thumbnail---->%s", error);
+//		LOG("gen_thumbnail---->%s", error);
 		return -1;
 	}
+//	LOG("gen_thumbnail---avformat_open_input %d", ret);
 
 	/* retrieve stream information */
 	if (ffmpeg.avformat_find_stream_info(fmt_ctx, NULL) < 0) {
@@ -107,7 +112,8 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 		video_stream = fmt_ctx->streams[video_stream_idx];
 		video_dec_ctx = video_stream->codec;
 	} else {
-		return -5;
+		ret = -5;
+		goto end;
 	}
 
 	/* dump input information to stderr */
@@ -141,6 +147,8 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 				AVSEEK_FLAG_BACKWARD); // | AVSEEK_FLAG_FRAME
 	}
 
+	LOG("gen_thumbnail---seek_target=%lld", seek_target);
+
 	int got_right_frame = 0;
 	while (!got_right_frame && ffmpeg.av_read_frame(fmt_ctx, &packet) >= 0) {
 		if (packet.stream_index == video_stream_idx) {
@@ -148,20 +156,18 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 					&packet);
 			if (got_frame) {
 				if (!gen_IDR_frame) {
-//					LOG("lyw-thumbnail++%lld++%lld", frame->pkt_pts, seek_target);
+//					LOG("gen_thumbnail++%lld++%lld", frame->pkt_pts, seek_target);
 					int64_t current_time = ffmpeg.av_rescale_q(frame->pkt_pts,
 							video_stream->time_base, AV_TIME_BASE_Q);
 					float time_diff = (float) current_time / AV_TIME_BASE
 							- gen_second;
-//					int64_t time_diff = current_time / AV_TIME_BASE
-//							- gen_second;
-//					LOG("lyw-thumbnail-->time_diff=%f", time_diff);
+//					LOG("gen_thumbnail-->time_diff=%f", time_diff);
 					if (time_diff > -0.03 && time_diff < 0.03) {
 						got_right_frame = 1;
 					} else {
 						if (time_diff >= 0) {
 							got_right_frame = 1;
-//							LOG("lyw-thumbnail-->pict_type=%d", frame->pict_type);
+//							LOG("gen_thumbnail-->pict_type=%d", frame->pict_type);
 						} else if (time_diff > 1) {
 							ffmpeg.av_free_packet(&packet);
 							break;
@@ -194,8 +200,15 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 
 	return ret;
 
-	end: ffmpeg.avcodec_close(video_dec_ctx);
-	ffmpeg.avformat_close_input(&fmt_ctx);
+end:
+	if (video_dec_ctx){
+//		LOG("gen_thumbnail---avcodec_close start...");
+		ffmpeg.avcodec_close(video_dec_ctx);
+	}
+	if (fmt_ctx){
+//		LOG("gen_thumbnail---avformat_close_input start...");
+		ffmpeg.avformat_close_input(&fmt_ctx);
+	}
 
 	return ret;
 }
@@ -204,8 +217,9 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		int *height, int gen_IDR_frame) {
 	int ret = 0;
 	frame = ffmpeg.av_frame_alloc();
-	if (!frame)
+	if (!frame) {
 		return NULL;
+	}
 
 	ret = gen_thumbnail(file, gen_second, gen_IDR_frame);
 
@@ -219,6 +233,7 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		*width = (video_dec_ctx->width);
 		*height = (video_dec_ctx->height);
 	}
+//	LOG("gen_thumbnail---width=%d,height=%d...", *width, *height);
 
 	ret = ffmpeg.avpicture_alloc(&picture, AV_PIX_FMT_ARGB, *width, *height);
 
