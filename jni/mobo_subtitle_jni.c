@@ -57,15 +57,24 @@ void Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_closeSubtitle(
 }
 
 jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleLanguage(
-		JNIEnv* env, jobject thiz, jstring jfile, int stream_index) {
+		JNIEnv* env, jobject thiz, jstring jfile) {
 
 	char *file = (*env)->GetStringUTFChars(env, jfile, 0);
+//	char *result = get_subtitle_language(subtiltle_index);
+	char text[500];
+	sj_get_sa_info(file,text);
+	LOGE("the language is strcpy   info:%s",text);
+	return (*env)->NewStringUTF(env, text);
 
-	char *result = get_subtitle_language(file, stream_index);
+}
 
-	jstring jresult = ctojstring(env,result);
-	LOGE("the language is strcpy jni:%s", jresult);
-	return jresult;
+jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleType(
+		JNIEnv* env, jobject thiz, int subtiltle_index) {
+
+
+	int result = get_subtitle_type(subtiltle_index);
+
+	return (jint)result;
 
 }
 
