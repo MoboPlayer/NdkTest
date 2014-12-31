@@ -188,7 +188,8 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 
 	return ret;
 
-	end: if (frame) {
+end:
+    if (frame) {
 		ffmpeg.av_frame_free(&frame);
 		frame = NULL;
 	}
