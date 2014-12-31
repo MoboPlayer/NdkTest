@@ -92,13 +92,14 @@ public class MainActivity extends ActionBarActivity {
         
         
         int temp = h.openSubtitleFile(filePath,0,0);
-        
         sb.append("open subtitle file :"+(temp<0?"失败":"成功")+"\n");
+        sb.append("getSubtitleType :"+h.getSubtitleType(0)+"\n");
+        sb.append("getSubtitleLanguage :"+h.getSubtitleLanguageInfo(filePath)+"\n");
         /*
          * 读取300秒内的字幕，每500毫秒读取一次 
          */
-        for(int i=0,j=0;i<300*2;i++){
-        	String str = h.getSubtitleByTime(i*500,0);
+        for(int i=0,j=0;i<300;i++){
+        	String str = h.getSubtitleByTime(i*1000,0);
         	if(str!=null){
         		if(!sb.toString().endsWith("subtitle:"+str+"\n")){
             		Log.e("subtitle", str==null?" null ": str);
