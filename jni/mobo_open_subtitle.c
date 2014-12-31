@@ -26,6 +26,7 @@
 
 #define DEFAULT_SUBTITLE_SIZE   2000
 
+#define MAX_TEXT_CHAR_LENGTH  1024
 #define MAX_SUBTITLES 10
 
 extern ffmpeg_func_t ffmpeg;
@@ -153,6 +154,10 @@ char *get_subtitle_ontime(int cur_time, int subtiltle_index)
     char *subtitle_text = NULL;
     sub_data_p sub_p = g_sub_p[subtiltle_index];
     array_index = binary_search(sub_p->subtitles_array, cur_time, sub_p->subtitle_index);
+
+    if(array_index == -1)
+    	array_index = binary_search(sub_p->subtitles_array, cur_time+500, sub_p->subtitle_index);
+
     AVSubtitle *subtitle = NULL;
     if (array_index >= 0) {
         subtitle = &sub_p->subtitles_array[array_index];
@@ -282,7 +287,16 @@ int is_subtitle_exits(const char *file)
 	return num;
 }
 
-char *get_subtitle_language(const char *file,int index){
+int get_subtitle_type(int subtiltle_index) {
+	if (!g_sub_p[subtiltle_index]) {
+		return -1;
+	}
+	sub_data_p sub_p = g_sub_p[subtiltle_index];
+	return sub_p->subtitles_array->rects[0]->type;
+
+}
+char *sj_get_sa_info(const char *file, char *text)
+{
 	AVFormatContext *fmt_ctx = NULL;
 
 	ffmpeg.av_register_all();
@@ -298,30 +312,100 @@ char *get_subtitle_language(const char *file,int index){
 		fprintf(stderr, "Could not find stream information\n");
 		return NULL;
 	}
+    int size = MAX_TEXT_CHAR_LENGTH;
 
-	char result[100];
-	int i,num;
-	for ( i = 0,num = 0; i < fmt_ctx->nb_streams; i++ ) {
-		if (fmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE) {
-			if( index == num++) {
+    int subtitle_i = 0;
+    int audio_i = 0,i;
+    for(i = 0; i < fmt_ctx->nb_streams; i++) {
 
-				AVStream *st = fmt_ctx->streams[i];
-				AVDictionaryEntry *lang = ffmpeg.av_dict_get(st->metadata, "title", NULL, 0);
-				if(lang){
-					strcpy(result,lang->value);
-				} else {
-					result[0] = 0;
-				}
+        if (fmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE) {
+            subtitle_i++;
+            AVCodecContext *sCodec = fmt_ctx->streams[i]->codec;
+            AVDictionaryEntry *lang = NULL;
+            char subtitleTitle[100];
+            char *subtitleLanguage = NULL;
+            char *subtitleCodecName = NULL;
 
-				break;
-			}
-		}
-	}
+            lang = ffmpeg.  av_dict_get(fmt_ctx->streams[i]->metadata, "title", NULL, 0);
+            if (lang != NULL) {
+                strcpy(subtitleTitle, lang->value);
+            } else {
+                sprintf(subtitleTitle, "Unknown %d", subtitle_i);
+                LOG("sj_get_sa_info subtitleTitle = %s", subtitleTitle);
+            }
 
-	ffmpeg.avformat_close_input(&fmt_ctx);
+            lang = ffmpeg.  av_dict_get(fmt_ctx->streams[i]->metadata, "language", NULL, 0);
+            if (lang != NULL) {
+                subtitleLanguage = lang->value;
+            } else {
+                subtitleLanguage = "Unknown";
+            }
+            subtitleCodecName = ffmpeg.avcodec_get_name(sCodec->codec_id);
+            if (subtitleCodecName == NULL) {
+                subtitleCodecName = "Unknown";
+            }
 
-	return result;
+            if (text && size)
+                snprintf(text,size,"%ss;%s;%s;%s\n",
+                        text,
+                        subtitleTitle,
+                        subtitleLanguage,
+                        subtitleCodecName
+                        );
+        }
+    }
+    ffmpeg.avformat_close_input(&fmt_ctx);
+    return text;
 }
+//char *get_subtitle_language(int subtiltle_index){
+////
+////	char result[100] = "hellooooo ";
+//////	char *temp = "hello";
+//////	strcpy(result,temp);
+////	return result;
+//
+//	if (!g_sub_p[subtiltle_index]) {
+//			return NULL;
+//	}
+//	sub_data_p sub_p = g_sub_p[subtiltle_index];
+//	AVFormatContext *fmt_ctx = sub_p->fmt_ctx;
+//
+//    int size = MAX_TEXT_CHAR_LENGTH;
+//
+//	char result[100];
+//	int i;
+//	for(i = 0; i < fmt_ctx->nb_streams; i++) {
+//
+//		if (fmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE) {
+//			AVCodecContext *sCodec = fmt_ctx->streams[i]->codec;
+//			AVDictionaryEntry *lang = NULL;
+////			char subtitleTitle[100];
+//
+//			lang = ffmpeg.av_dict_get(fmt_ctx->streams[i]->metadata, "title", NULL, 0);
+//			if (lang != NULL) {
+////				strcat(text,lang->value);
+////				strcat(text,"\n");
+//				strcpy(result, lang->value);
+//				break;
+//			} else {
+//
+////				strcat(text,"\n");
+////				LOG("sj_get_sa_info subtitleTitle = %s", subtitleTitle);
+//			}
+//
+//
+//
+//
+////			if (text && size)
+////				snprintf(text,size,"%ss%s\n",
+////						text,
+////						subtitleTitle
+////						);
+//		}
+//	}
+//
+//	return NULL;
+//}
 
 char *sj_get_raw_text_from_ssa(const char *ssa)
 {

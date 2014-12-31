@@ -42,5 +42,7 @@ int open_subtitle(const char *file, int stream_index, int subtiltle_index);
 char *get_subtitle_ontime(int cur_time, int subtiltle_index);
 void close_subtitle(int subtiltle_index);
 int is_subtitle_exits(const char *file);
-char *get_subtitle_language(const char *file,int i);
+//char *get_subtitle_language(int subtiltle_index);
+int get_subtitle_type(int subtiltle_index);
+char *sj_get_sa_info(const char *file, char *text);
 #endif
