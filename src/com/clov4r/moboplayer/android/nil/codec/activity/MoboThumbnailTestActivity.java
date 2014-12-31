@@ -25,10 +25,7 @@
 package com.clov4r.moboplayer.android.nil.codec.activity;
 
 import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Intent;
 import android.graphics.Bitmap;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.View;
@@ -44,9 +41,9 @@ import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni.OnBitmapCreatedL
 public class MoboThumbnailTestActivity extends Activity {
 	// final String videoName =
 	// Environment.getExternalStorageDirectory()+"/dy/ppkard.mp4";
-	// final String videoName =
-	// Environment.getExternalStorageDirectory()+"/Movies/蒙羞之旅BD中英双字.rmvb";//[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv
-	final String videoName = "/sdcard/Movies/01010020_0006.MP4";// /sdcard/Movies/播放失败导致mobo重启.m2ts
+	 final String videoName =
+	 Environment.getExternalStorageDirectory()+"/Movies/[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv";//蒙羞之旅BD中英双字.rmvb
+//	final String videoName = "/sdcard/Movies/播放失败导致mobo重启.m2ts";// /sdcard/Movies/01010020_0006.MP4
 
 	final String img_save_path = Environment.getExternalStorageDirectory()
 			+ "/mobo_screen_shot_%d.png";
@@ -79,7 +76,7 @@ public class MoboThumbnailTestActivity extends Activity {
 					mOnBitmapCreatedListener);
 			if (flag++ % 2 == 0)
 				ScreenShotLibJni.getInstance().getScreenShot(videoName,
-						"/sdcard/test.png", 35, 150, 150);
+						"/sdcard/test.png", 2836, 150, 150);//
 			else
 				ScreenShotLibJni.getInstance().getIDRFrameThumbnail(videoName,
 						"/sdcard/test.png", 0, 0);

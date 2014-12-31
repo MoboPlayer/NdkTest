@@ -36,10 +36,6 @@ jobject init_byte_buffer(JNIEnv* env, jobject thiz, int size) {
 			"allocateDirect", "(I)Ljava/nio/ByteBuffer;");
 	jobject bitmap_data = (*env)->CallStaticObjectMethod(env, byte_buffer_class,
 			method_id, size);
-	if (bitmap_data)
-		LOG("bytebuffer is not null");
-	else
-		LOG("bytebuffer is null");
 	return bitmap_data;
 }
 void create_bitmap(JNIEnv* env, jobject thiz, jobject bitmap_data, jstring size,
@@ -49,6 +45,13 @@ void create_bitmap(JNIEnv* env, jobject thiz, jobject bitmap_data, jstring size,
 			"(Ljava/nio/ByteBuffer;Ljava/lang/String;Ljava/lang/String;)V");
 	(*env)->CallVoidMethod(env, thiz, createBitmap, bitmap_data, size,
 			video_name);
+//	free_byte_buffer(env,bitmap_data);
+}
+
+void free_byte_buffer(JNIEnv* env, jobject bitmap_data) {
+	void *buffer = (*env)->GetDirectBufferAddress(env,bitmap_data);
+	(*env)->DeleteGlobalRef(env,bitmap_data);
+	free(buffer);
 }
 
 jstring get_thumbnail(JNIEnv* env, jobject thiz, jstring video_name,
@@ -77,6 +80,11 @@ jstring get_thumbnail(JNIEnv* env, jobject thiz, jstring video_name,
 	screen_shot_size = (*env)->NewStringUTF(env, res);
 	create_bitmap(env, thiz, bitmap_data, screen_shot_size, video_name);
 	return screen_shot_size;
+}
+
+void Java_com_clov4r_moboplayer_android_nil_codec_ScreenShotLibJni_releaseByteBuffer(
+		JNIEnv* env, jobject thiz, jobject buffer_data) {
+	free_byte_buffer(env,buffer_data);
 }
 
 jstring Java_com_clov4r_moboplayer_android_nil_codec_ScreenShotLibJni_getThumbnail(
