@@ -72,15 +72,19 @@ public class MoboThumbnailTestActivity extends Activity {
 		@Override
 		public void onClick(View v) {
 			// TODO Auto-generated method stub
-			ScreenShotLibJni.getInstance().setOnBitmapCreatedListener(
-					mOnBitmapCreatedListener);
+			Bitmap bitmap=null;
+//			ScreenShotLibJni.getInstance().setOnBitmapCreatedListener(
+//					mOnBitmapCreatedListener);
 			if (flag++ % 2 == 0)
-				ScreenShotLibJni.getInstance().getScreenShot(videoName,
+				bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
 						"/sdcard/test.png", 2836, 150, 150);//
 			else
-				ScreenShotLibJni.getInstance().getIDRFrameThumbnail(videoName,
+				bitmap=ScreenShotLibJni.getInstance().getIDRFrameThumbnail(videoName,
 						"/sdcard/test.png", 0, 0);
-			// imageView.setImageBitmap(bitmap);
+
+			layout.removeView(imageView);
+			layout.addView(imageView);
+			imageView.setImageBitmap(bitmap);
 //			 Intent intent=new Intent();
 //			 intent.setComponent(new
 //			 ComponentName("com.clov4r.moboplayer.android.nil",
