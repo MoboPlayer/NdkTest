@@ -55,7 +55,22 @@ void Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_closeSubtitle(
 	close_subtitle(subtiltle_index);
 
 }
+jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileInJNI2(
+		JNIEnv* env, jobject thiz, jstring jfile, int stream_index, int subtiltle_index) {
 
+	char *file = (*env)->GetStringUTFChars(env, jfile, 0);
+
+	int result = open_subtitle_2(file, stream_index, subtiltle_index);
+
+	return (jint) result;
+
+}
+
+void Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_closeSubtitle2(
+		JNIEnv* env, jobject thiz, int subtiltle_index) {
+	close_subtitle_2(subtiltle_index);
+
+}
 jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleLanguage(
 		JNIEnv* env, jobject thiz, jstring jfile) {
 
@@ -84,6 +99,15 @@ jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleType(
 jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTime(
 		JNIEnv* env, jobject thiz, int current_time, int subtiltle_index) {
 	char *subtitle = get_subtitle_ontime(current_time, subtiltle_index);
+	return (*env)->NewStringUTF(env, subtitle);
+
+}
+/* This is a native method ,that is get subtitle by time ms.
+ *
+ */
+jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTime2(
+		JNIEnv* env, jobject thiz, int current_time, int subtiltle_index, int time_diff) {
+	char *subtitle = get_subtitle_ontime_2(current_time, subtiltle_index,time_diff);
 	return (*env)->NewStringUTF(env, subtitle);
 
 }

@@ -147,18 +147,24 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 
 	int got_right_frame = 0;
 	int flag = 0;
+	double pts;
 	while (!got_right_frame && ffmpeg.av_read_frame(fmt_ctx, &packet) >= 0) {
 		if (packet.stream_index == video_stream_idx) {
 			ffmpeg.avcodec_decode_video2(video_dec_ctx, frame, &got_frame,
 					&packet);
 			if (got_frame) {
 				if (!gen_IDR_frame) {
-//					LOG("gen_thumbnail++%lld++%lld", frame->pkt_pts, seek_target);
-					int64_t current_time = ffmpeg.av_rescale_q(frame->pkt_pts,
+					if (packet.dts != AV_NOPTS_VALUE) {
+						pts = packet.dts;
+					} else {
+						pts = 0;
+					}
+//					LOG("gen_thumbnail++%lf++%lld", pts, seek_target); //frame->pkt_pts
+					int64_t current_time = ffmpeg.av_rescale_q(pts,
 							video_stream->time_base, AV_TIME_BASE_Q);
 					float time_diff = (float) current_time / AV_TIME_BASE
 							- gen_second;
-//						LOG("gen_thumbnail-->current_time=%lld----seek_target=%lld----gen_second=%d---time_diff=%f", current_time, seek_target, gen_second, time_diff);
+//					LOG("gen_thumbnail-->current_time=%lld----seek_target=%lld----gen_second=%d---time_diff=%f", current_time, seek_target, gen_second, time_diff);
 					if (time_diff > -0.03) { //&& time_diff < 0.03
 						got_right_frame = 1;
 					} else {
@@ -188,8 +194,7 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 
 	return ret;
 
-end:
-    if (frame) {
+	end: if (frame) {
 		ffmpeg.av_frame_free(&frame);
 		frame = NULL;
 	}

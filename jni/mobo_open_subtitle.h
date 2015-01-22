@@ -39,8 +39,11 @@ typedef struct SubtitleData {
 typedef SubtitleData *sub_data_p;
 
 int open_subtitle(const char *file, int stream_index, int subtiltle_index);
+int open_subtitle_2(const char *file, int stream_index, int subtiltle_index);
 char *get_subtitle_ontime(int cur_time, int subtiltle_index);
+char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff);
 void close_subtitle(int subtiltle_index);
+void close_subtitle_2(int subtiltle_index);
 int is_subtitle_exits(const char *file);
 //char *get_subtitle_language(int subtiltle_index);
 int get_subtitle_type(int subtiltle_index);
