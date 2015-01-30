@@ -218,6 +218,39 @@ int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_
 	ffmpeg_func_p->sws_scale = dlsym(handle, "sws_scale");
 	FF_FUNC_CHECK(ffmpeg_func_p->sws_scale);
 
+	ffmpeg_func_p->avformat_alloc_output_context2 = dlsym(handle, "avformat_alloc_output_context2");
+	FF_FUNC_CHECK(ffmpeg_func_p->avformat_alloc_output_context2);
+
+	ffmpeg_func_p->avformat_new_stream = dlsym(handle, "avformat_new_stream");
+	FF_FUNC_CHECK(ffmpeg_func_p->avformat_new_stream);
+
+	ffmpeg_func_p->avcodec_copy_context = dlsym(handle, "avcodec_copy_context");
+	FF_FUNC_CHECK(ffmpeg_func_p->avcodec_copy_context);
+
+	ffmpeg_func_p->avio_open = dlsym(handle, "avio_open");
+	FF_FUNC_CHECK(ffmpeg_func_p->avio_open);
+
+	ffmpeg_func_p->avformat_write_header = dlsym(handle, "avformat_write_header");
+	FF_FUNC_CHECK(ffmpeg_func_p->avformat_write_header);
+
+	ffmpeg_func_p->av_rescale_q_rnd = dlsym(handle, "av_rescale_q_rnd");
+	FF_FUNC_CHECK(ffmpeg_func_p->av_rescale_q_rnd);
+
+	ffmpeg_func_p->av_interleaved_write_frame = dlsym(handle, "av_interleaved_write_frame");
+	FF_FUNC_CHECK(ffmpeg_func_p->av_interleaved_write_frame);
+
+	ffmpeg_func_p->avio_close = dlsym(handle, "avio_close");
+	FF_FUNC_CHECK(ffmpeg_func_p->avio_close);
+
+	ffmpeg_func_p->av_write_trailer = dlsym(handle, "av_write_trailer");
+	FF_FUNC_CHECK(ffmpeg_func_p->av_write_trailer);
+
+	ffmpeg_func_p->avformat_free_context = dlsym(handle, "avformat_free_context");
+	FF_FUNC_CHECK(ffmpeg_func_p->avformat_free_context);
+
+	ffmpeg_func_p->avio_seek_time = dlsym(handle, "avio_seek_time");
+	FF_FUNC_CHECK(ffmpeg_func_p->avio_seek_time);
+
 	if ((error = dlerror()) != NULL)  {
 		LOG("!!!can't find sym in ffmpeg.so : %s",error);
 		return -1;

@@ -77,7 +77,7 @@ public class MainActivity extends ActionBarActivity {
         this.getFilesDir().getParent();
         String libpath = getFilesDir().getParent()+"/lib/";
         String libname = "libffmpeg_armv7_neon.so";
-        String filePath =  Environment.getExternalStorageDirectory()+"/03181751_1684.MP4";//videoName;Gone.srt//Godzilla.srt//output_file_low.mkv
+        String filePath =  Environment.getExternalStorageDirectory()+"/Movies/03181751_1684.MP4";//videoName;Gone.srt//Godzilla.srt//output_file_low.mkv
         
         Log.e("params", libpath+" "+filePath);
         StringBuffer sb = new StringBuffer();
@@ -91,24 +91,24 @@ public class MainActivity extends ActionBarActivity {
 //        }
         
         
-        int temp = h.openSubtitleFile(filePath,0,0);
-        sb.append("open subtitle file :"+(temp<0?"失败":"成功")+"\n");
-        sb.append("getSubtitleType :"+h.getSubtitleType(0)+"\n");
-        sb.append("getSubtitleLanguage :"+h.getSubtitleLanguageInfo(filePath)+"\n");
-        /*
-         * 读取300秒内的字幕，每500毫秒读取一次 
-         */
-        for(int i=0,j=0;i<300;i++){
-        	String str = h.getSubtitleByTime(i*1000,0);
-        	if(str!=null){
-        		if(!sb.toString().endsWith("subtitle:"+str+"\n")){
-            		Log.e("subtitle", str==null?" null ": str);
-        			sb.append("index:"+(++j)+" time:"+i/2+"s subtitle:"+str+"\n");
-        		}
-        			
-        	
-        	}
-        }
+//        int temp = h.openSubtitleFile(filePath,0,0);
+//        sb.append("open subtitle file :"+(temp<0?"失败":"成功")+"\n");
+//        sb.append("getSubtitleType :"+h.getSubtitleType(0)+"\n");
+//        sb.append("getSubtitleLanguage :"+h.getSubtitleLanguageInfo(filePath)+"\n");
+//        /*
+//         * 读取300秒内的字幕，每500毫秒读取一次 
+//         */
+//        for(int i=0,j=0;i<300;i++){
+//        	String str = h.getSubtitleByTime(i*1000,0);
+//        	if(str!=null){
+//        		if(!sb.toString().endsWith("subtitle:"+str+"\n")){
+//            		Log.e("subtitle", str==null?" null ": str);
+//        			sb.append("index:"+(++j)+" time:"+i/2+"s subtitle:"+str+"\n");
+//        		}
+//        			
+//        	
+//        	}
+//        }
        
         tv.setText( sb.toString());
 
@@ -166,7 +166,9 @@ public class MainActivity extends ActionBarActivity {
 		if (id == R.id.action_settings) {
 			Intent intent=new Intent(this,MoboThumbnailTestActivity.class);
 	        startActivity(intent);
-			return true;
+		}else if(id==R.id.action_download){
+			Intent intent=new Intent(this,StreamingDownloadActivity.class);
+	        startActivity(intent);
 		}
 		return super.onOptionsItemSelected(item);
 	}
