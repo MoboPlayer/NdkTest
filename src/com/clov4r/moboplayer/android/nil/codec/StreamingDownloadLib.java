@@ -1,12 +1,13 @@
 package com.clov4r.moboplayer.android.nil.codec;
 
 import java.util.HashMap;
-
-import com.clov4r.moboplayer.android.nil.library.DataSaveLib;
+import java.util.Iterator;
 
 import android.content.Context;
 import android.os.AsyncTask;
 import android.util.SparseArray;
+
+import com.clov4r.moboplayer.android.nil.library.DataSaveLib;
 
 /**
  * The MIT License (MIT)
@@ -70,6 +71,7 @@ public class StreamingDownloadLib {
 			downloadData.streamingUrl = streamingUrl;
 			downloadData.fileSavePath = fileSavePath;
 			downloadData.id = key;
+			dataMap.put(key, downloadData);
 		}
 
 		new DownloadLib(downloadData).execute((Void) null);
@@ -78,30 +80,46 @@ public class StreamingDownloadLib {
 
 	public void pauseDownload(int downloadId) {
 		synchronized (lockObj) {
-			nativePauseDownload(downloadId);
+			if (dataMap.containsKey(downloadId)) {
+				StreamingDownloadData downloadData = dataMap.get(downloadId);
+				nativePauseDownload(downloadId);
+				downloadData.status = StreamingDownloadData.download_status_paused;
+			}
 		}
 	}
 
 	public void resumeDownload(int downloadId) {
 		synchronized (lockObj) {
-			nativeResumeDownload(downloadId);
+			if (dataMap.containsKey(downloadId)) {
+				StreamingDownloadData downloadData = dataMap.get(downloadId);
+				nativeResumeDownload(downloadId);
+				downloadData.status = StreamingDownloadData.download_status_started;
+			}
 		}
 	}
 
 	public void stopDownload(int downloadId) {
 		synchronized (lockObj) {
-			nativeStopDownload(downloadId);
+			if (dataMap.containsKey(downloadId)) {
+				StreamingDownloadData downloadData = dataMap.get(downloadId);
+				nativeStopDownload(downloadId);
+				downloadData.status = StreamingDownloadData.download_status_stoped;
+			}
 		}
 	}
 
-	public void onDownloadProgressChanged(int id, int streamIndex, long pts,
+	public void onDownloadProgressChanged(int id, long position,// int
+																// streamIndex,
+			// long pts,
 			int currentTime) {
 		synchronized (lockObj) {
 			if (dataMap.containsKey(id)) {
 				StreamingDownloadData downloadData = dataMap.get(id);
-				// downloadData.finishSize = size;
-				downloadData.stm_index_pts_map.put(streamIndex, pts);
+				downloadData.finishSize = position;
+				// downloadData.stm_index_pts_map.put(streamIndex, pts);
 				downloadData.currentTime = currentTime;
+				if (downloadData.duration == 0)
+					downloadData.duration = nativeGetDuration(id);
 				mMoboDownloadListener.onDownloadProgressChanged(downloadData,
 						currentTime);
 			}
@@ -112,7 +130,7 @@ public class StreamingDownloadLib {
 		synchronized (lockObj) {
 			if (dataMap.containsKey(id)) {
 				StreamingDownloadData downloadData = dataMap.get(id);
-				downloadData.isFinished = true;
+				downloadData.status = StreamingDownloadData.download_status_finished;
 				mMoboDownloadListener.onDownloadFinished(downloadData);
 			}
 		}
@@ -122,7 +140,7 @@ public class StreamingDownloadLib {
 		synchronized (lockObj) {
 			if (dataMap.containsKey(id)) {
 				StreamingDownloadData downloadData = dataMap.get(id);
-				downloadData.isDownloadFailed = true;
+				downloadData.status = StreamingDownloadData.download_status_failed;
 				mMoboDownloadListener.onDownloadFailed(downloadData);
 			}
 		}
@@ -144,8 +162,20 @@ public class StreamingDownloadLib {
 		return (url + path).hashCode();
 	}
 
+	public StreamingDownloadData getDownloadDataOfUrl(String url) {
+		Iterator<Integer> iterator = dataMap.keySet().iterator();
+		while (iterator.hasNext()) {
+			int id = iterator.next();
+			StreamingDownloadData tmpData = dataMap.get(id);
+			if (tmpData.streamingUrl.equals(url)) {
+				return tmpData;
+			}
+		}
+		return null;
+	}
+
 	public native void nativeStartDownload(String streamingUrl,
-			String fileSavePath, int id, Long[] ptsArray);
+			String fileSavePath, int id, long finishedSize);// Long[] ptsArray
 
 	public native void nativePauseDownload(int downloadId);
 
@@ -168,7 +198,8 @@ public class StreamingDownloadLib {
 			nativeStartDownload(mStreamingDownloadData.streamingUrl,
 					mStreamingDownloadData.fileSavePath,
 					mStreamingDownloadData.id,
-					mStreamingDownloadData.getPtsArray());
+					mStreamingDownloadData.finishSize);// mStreamingDownloadData.getPtsArray()
+			mStreamingDownloadData.status = StreamingDownloadData.download_status_started;
 			return null;
 		}
 
@@ -184,15 +215,23 @@ public class StreamingDownloadLib {
 	}
 
 	public class StreamingDownloadData {
+		public static final int download_status_paused = -1;
+		public static final int download_status_stoped = 0;
+		public static final int download_status_started = 1;
+		public static final int download_status_finished = 2;
+		public static final int download_status_failed = 3;
 		public int id;
 		public String streamingUrl;
 		public String fileSavePath;
-		public int progress;
+		// public int progress;
+		/** 已经下载的字节数 **/
 		public long finishSize;
-		/** 当前下载到的时间 **/
+		/** 当前下载到的时间 ，单位秒 **/
 		public int currentTime;
-		public boolean isFinished;
-		public boolean isDownloadFailed;
+		public int duration = 0;
+		// public boolean isFinished;
+		// public boolean isDownloadFailed;
+		public int status = download_status_stoped;
 		/** 视频中每个stream与pts的对应关系 **/
 		SparseArray<Long> stm_index_pts_map = new SparseArray<Long>();
 

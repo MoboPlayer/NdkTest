@@ -251,6 +251,12 @@ int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_
 	ffmpeg_func_p->avio_seek_time = dlsym(handle, "avio_seek_time");
 	FF_FUNC_CHECK(ffmpeg_func_p->avio_seek_time);
 
+	ffmpeg_func_p->avformat_network_init = dlsym(handle, "avformat_network_init");
+	FF_FUNC_CHECK(ffmpeg_func_p->avformat_network_init);
+
+	ffmpeg_func_p->avio_skip = dlsym(handle, "avio_skip");
+	FF_FUNC_CHECK(ffmpeg_func_p->avio_skip);
+
 	if ((error = dlerror()) != NULL)  {
 		LOG("!!!can't find sym in ffmpeg.so : %s",error);
 		return -1;

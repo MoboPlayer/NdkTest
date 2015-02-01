@@ -41,8 +41,8 @@ import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni.OnBitmapCreatedL
 public class MoboThumbnailTestActivity extends Activity {
 	// final String videoName =
 	// Environment.getExternalStorageDirectory()+"/dy/ppkard.mp4";
-	 final String videoName =
-	 Environment.getExternalStorageDirectory()+"/Movies/[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv";//蒙羞之旅BD中英双字.rmvb
+	 final String videoName ="http://27.221.31.132/677426847AC4A840C627EE6EF9/0300020A004CD3F2256A9304AB23B560258341-0E54-7FE1-2017-3A3499473E7C.flv";
+	 //Environment.getExternalStorageDirectory()+"/Movies/[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv";//蒙羞之旅BD中英双字.rmvb
 //	final String videoName = "/sdcard/Movies/播放失败导致mobo重启.m2ts";// /sdcard/Movies/01010020_0006.MP4
 
 	final String img_save_path = Environment.getExternalStorageDirectory()

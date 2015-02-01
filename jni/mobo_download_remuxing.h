@@ -34,26 +34,27 @@
 #include <libavutil/timestamp.h>
 #include <libavformat/avformat.h>
 #include <jni.h>
+#include <pthread.h>
 #include "cmp_ffmpeg.h"
 
-#define flag_download_start 1
-#define flag_download_pause -1
-#define flag_download_stop 0
+#define FLAG_DOWNLOAD_START 1
+#define FLAG_DOWNLOAD_PAUSE -1
+#define FLAG_DOWNLOAD_STOP 0
 
 extern JavaVM *jvm;
 extern jobject java_object;
 extern int download_id;
 extern ffmpeg_func_t ffmpeg;
 
+int init_mutex_cond();
 
-//void log_packet(const AVFormatContext *fmt_ctx, const AVPacket *pkt,
-//		const char *tag);
+void des_mutex_cond();
 
-int saving_network_media(const char *in_filename, const char *out_filename,int64_t pts_array[]);
+int saving_network_media(const char *in_filename, const char *out_filename,int64_t skip_bytes);//pts_array[]
 
 void set_download_flag(int flag);
 
-static void java_callback_onDownloadProgressChanged(AVPacket pkt,int current_time);
+static void java_callback_onDownloadProgressChanged(int64_t pos,int current_time);//AVPacket pkt
 
 static void java_callback_onDownloadFinished();
 

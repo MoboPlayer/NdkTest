@@ -30,73 +30,149 @@
 
 #include "mobo_download_remuxing.h"
 
-int streaming_duration=0;
+int streaming_duration = 0;
 
 /**-1：暂停；0：停止；1：开始**/
 int download_flag = 1;
+#define ATTACH_ERROR    -4
+#define ATTACH_SUCCESS  0
+
+static pthread_mutex_t* download_mutex;
+static pthread_cond_t* download_cond;
+
+static int JniThreadAttach(int *needDetach, JNIEnv **_env) {
+	int getEnvStat;
+
+	if (_env == NULL)
+		return ATTACH_ERROR;
+
+	*needDetach = 0;
+	getEnvStat = (*jvm)->GetEnv(jvm, _env, JNI_VERSION_1_6);
+	if (getEnvStat == JNI_EDETACHED) {
+		LOG("JNI_EDETACHED");
+		if ((*jvm)->AttachCurrentThread(jvm, (void **) _env, NULL) == 0) {
+			*needDetach = 1;
+			return ATTACH_SUCCESS;
+		} else {
+			LOG("Failed to attach");
+			return ATTACH_ERROR;
+		}
+	} else if (getEnvStat == JNI_OK) {
+		LOG("JNI_OK");
+	} else if (getEnvStat == JNI_EVERSION) {
+		LOG("JNI_EVERSION");
+	}
+
+	return ATTACH_SUCCESS;
+}
+
+static void JniThreadDetach(int needDetach) {
+	if (needDetach)
+		(*jvm)->DetachCurrentThread(jvm);
+}
 
 static void log_packet(const AVFormatContext *fmt_ctx, const AVPacket *pkt,
 		const char *tag) {
-	AVRational *time_base = &fmt_ctx->streams[pkt->stream_index]->time_base;
+//	AVRational *time_base = &fmt_ctx->streams[pkt->stream_index]->time_base;
+//
+//	LOG("download_streaming-->%s: pts:%s pts_time:%s dts:%s dts_time:%s duration:%s duration_time:%s stream_index:%d\n",
+//			tag, av_ts2str(pkt->pts), av_ts2timestr(pkt->pts, time_base),
+//			av_ts2str(pkt->dts), av_ts2timestr(pkt->dts, time_base),
+//			av_ts2str(pkt->duration), av_ts2timestr(pkt->duration, time_base),
+//			pkt->stream_index);
+}
+int init_mutex_cond() {
 
-	printf(
-			"%s: pts:%s pts_time:%s dts:%s dts_time:%s duration:%s duration_time:%s stream_index:%d\n",
-			tag, av_ts2str(pkt->pts), av_ts2timestr(pkt->pts, time_base),
-			av_ts2str(pkt->dts), av_ts2timestr(pkt->dts, time_base),
-			av_ts2str(pkt->duration), av_ts2timestr(pkt->duration, time_base),
-			pkt->stream_index);
+	if (!download_mutex) {
+		download_mutex = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
+		memset(download_mutex, 0, sizeof(pthread_mutex_t));
+		pthread_mutex_init(download_mutex, NULL);
+	}
+
+	if (!download_cond) {
+		download_cond = (pthread_cond_t*) malloc(sizeof(pthread_cond_t));
+		memset(download_cond, 0, sizeof(pthread_cond_t));
+		pthread_cond_init(download_cond, NULL);
+
+	}
 }
 
-int saving_network_media(const char *in_filename, const char *out_filename,int64_t pts_array[]) {
+void des_mutex_cond() {
+
+	if (download_cond) {
+		pthread_cond_destroy(download_cond);
+		free(download_cond);
+		download_cond = NULL;
+	}
+
+	if (download_mutex) {
+		pthread_mutex_destroy(download_mutex);
+		free(download_mutex);
+		download_mutex = NULL;
+	}
+}
+int saving_network_media(const char *in_filename, const char *out_filename,
+		int64_t skip_bytes) { //int64_t pts_array[]
 	int fff = 0;
 
-	LOG("download_streaming-->saving_network_media start...");
 	AVOutputFormat *ofmt = NULL;
 	AVFormatContext *ifmt_ctx = NULL, *ofmt_ctx = NULL;
 	AVPacket pkt;
 	int ret, i;
-	int flag=0;
+	int flag = 0;
+	char error[500];
 
 	ffmpeg.av_register_all();
+	ffmpeg.avformat_network_init();
 
 	if ((ret = ffmpeg.avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0) {
-		fprintf(stderr, "Could not open input file '%s'", in_filename);
+		ffmpeg.av_strerror(ret, error, 500);
+		LOG("download_streaming-->avformat_open_input res=%s...", error);
 		goto end;
 	}
 
 	if ((ret = ffmpeg.avformat_find_stream_info(ifmt_ctx, 0)) < 0) {
 		fprintf(stderr, "Failed to retrieve input stream information");
+		ffmpeg.av_strerror(ret, error, 500);
+		LOG("download_streaming-->avformat_open_input res=%s...", error);
 		goto end;
 	}
 
+	LOG("download_streaming-->avformat_open_input after");
 	ffmpeg.av_dump_format(ifmt_ctx, 0, in_filename, 0);
 
-	streaming_duration = ifmt_ctx->duration/AV_TIME_BASE;
+	streaming_duration = ifmt_ctx->duration / AV_TIME_BASE;
 
-	LOG("download_streaming-->before avformat_alloc_output_context2...%s",out_filename);
-	ret = ffmpeg.avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, out_filename);
-	LOG("download_streaming-->after avformat_alloc_output_context2...%d",ret);
+	ret = ffmpeg.avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL,
+			out_filename);
 
-	char error[500];
 	ffmpeg.av_strerror(ret, error, 500);
-	LOG("download_streaming-->after avformat_alloc_output_context2...%s",error);
+//	LOG("download_streaming-->after avformat_alloc_output_context2...%s",error);
 	if (!ofmt_ctx) {
 		fprintf(stderr, "Could not create output context\n");
 		ret = AVERROR_UNKNOWN;
+		LOG("download_streaming-->avformat_open_input res=%s...", error);
 		goto end;
 	}
-	LOG("download_streaming-->after avformat_alloc_output_context2...");
 
 	ofmt = ofmt_ctx->oformat;
 
+	LOG("download_streaming-->before for");
+
+//	if (skip_bytes > 0) {
+//		LOG("download_streaming-->avio_skip position=%lld...", skip_bytes);
+//		ffmpeg.avio_skip(ifmt_ctx->pb, skip_bytes);
+//	}
 	for (i = 0; i < ifmt_ctx->nb_streams; i++) {
-		LOG("download_streaming-->for index=%d...",i);
-		if (pts_array){
-			int64_t last_pts = pts_array[i];
-		    ffmpeg.avformat_seek_file(ifmt_ctx,i,last_pts,last_pts,last_pts,AVSEEK_FLAG_ANY);
-//		    ffmpeg.avio_seek_time(ifmt_ctx->pb,i,pts_array[i],AVSEEK_FLAG_ANY);
-			LOG("download_streaming-->seek out file's stream=%d&&&pts=%lld...",i,last_pts);
-		}
+//		if (pts_array){
+//			LOG("download_streaming-->pts_array is not null");
+//			int64_t last_pts = pts_array[i];
+//			LOG("download_streaming-->seek out file's stream=%d&&&pts=%lld...",i,last_pts);
+////		    ffmpeg.avformat_seek_file(ifmt_ctx,i,last_pts,last_pts,last_pts,AVSEEK_FLAG_ANY);
+//		    ffmpeg.avio_skip(ifmt_ctx->pb,skip_bytes);
+////		    ffmpeg.avio_seek_time(ifmt_ctx->pb,i,pts_array[i],AVSEEK_FLAG_ANY);
+//			LOG("download_streaming-->seek out successed");
+//		}
 		AVStream *in_stream = ifmt_ctx->streams[i];
 		AVStream *out_stream = ffmpeg.avformat_new_stream(ofmt_ctx,
 				in_stream->codec->codec);
@@ -118,39 +194,48 @@ int saving_network_media(const char *in_filename, const char *out_filename,int64
 	}
 	ffmpeg.av_dump_format(ofmt_ctx, 0, out_filename, 1);
 
-	LOG("download_streaming-->before avio_open...");
 	if (!(ofmt->flags & AVFMT_NOFILE)) {
 		ret = ffmpeg.avio_open(&ofmt_ctx->pb, out_filename, AVIO_FLAG_WRITE);
 		if (ret < 0) {
 			fprintf(stderr, "Could not open output file '%s'", out_filename);
 			goto end;
 		}
-		if (pts_array){
-			for (i=0;i<ofmt_ctx->nb_streams;i++) {
-				ffmpeg.avio_seek_time(ofmt_ctx->pb,i,pts_array[i],AVSEEK_FLAG_ANY);
-			}
-		}
+//		if (pts_array) {
+//			for (i = 0; i < ofmt_ctx->nb_streams; i++) {
+//				ffmpeg.avio_seek_time(ofmt_ctx->pb, i, pts_array[i],
+//						AVSEEK_FLAG_ANY);
+//			}
+//		}
+
+//		if (skip_bytes > 0) {
+//			LOG("download_streaming-->avio_skip position=%lld...", skip_bytes);
+//			ffmpeg.avio_skip(ofmt_ctx->pb, skip_bytes);
+//		}
 	}
 
-	LOG("download_streaming-->before avformat_write_header...");
-	if(!pts_array)
-	    ret = ffmpeg.avformat_write_header(ofmt_ctx, NULL);
+	if (!skip_bytes)//pts_array
+		ret = ffmpeg.avformat_write_header(ofmt_ctx, NULL);
 	if (ret < 0) {
 		fprintf(stderr, "Error occurred when opening output file\n");
 		goto end;
 	}
 
-	LOG("download_streaming-->before write...");
+	LOG("download_streaming-->before while");
 	while (download_flag) {
-		if(download_flag<0){
-			sleep(50);
-			continue;
+		if (download_flag == FLAG_DOWNLOAD_PAUSE) {
+			pthread_mutex_lock(download_mutex);
+			LOG("download_streaming-->pause download");
+			pthread_cond_wait(download_cond, download_mutex);
+			LOG("download_streaming-->resume download");
+			pthread_mutex_unlock(download_mutex);
 		}
 		AVStream *in_stream, *out_stream;
 
 		ret = ffmpeg.av_read_frame(ifmt_ctx, &pkt);
-		if (ret < 0)
+		if (ret < 0){
+			LOG("download_streaming-->while -- ret=%d...", ret);
 			break;
+		}
 
 		in_stream = ifmt_ctx->streams[pkt.stream_index];
 		out_stream = ofmt_ctx->streams[pkt.stream_index];
@@ -159,6 +244,8 @@ int saving_network_media(const char *in_filename, const char *out_filename,int64
 		if (fff == 0 && pkt.stream_index == 1) {
 			fff = 1;
 		} else {
+			int current_time = ffmpeg.av_rescale_q(pkt.pts,
+					out_stream->time_base, AV_TIME_BASE_Q) / AV_TIME_BASE;
 			/* copy packet */
 			pkt.pts = ffmpeg.av_rescale_q_rnd(pkt.pts, in_stream->time_base,
 					out_stream->time_base,
@@ -166,16 +253,16 @@ int saving_network_media(const char *in_filename, const char *out_filename,int64
 			pkt.dts = ffmpeg.av_rescale_q_rnd(pkt.dts, in_stream->time_base,
 					out_stream->time_base,
 					AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX);
-			pkt.duration = ffmpeg.av_rescale_q(pkt.duration, in_stream->time_base,
-					out_stream->time_base);
+			pkt.duration = ffmpeg.av_rescale_q(pkt.duration,
+					in_stream->time_base, out_stream->time_base);
 			pkt.pos = -1;
 			log_packet(ofmt_ctx, &pkt, "out");
 
+			LOG("download_streaming-->while -- before av_interleaved_write_frame...");
 			ret = ffmpeg.av_interleaved_write_frame(ofmt_ctx, &pkt);
-		    int current_time = ffmpeg.av_rescale_q(pkt.pts,
-		    		out_stream->time_base, AV_TIME_BASE_Q)/ AV_TIME_BASE;
-		    if (flag++%5==0)
-			    java_callback_onDownloadProgressChanged(pkt, current_time);
+			LOG("download_streaming-->while -- after av_interleaved_write_frame...%d",ret);
+			if (current_time % 2 == 0)
+				java_callback_onDownloadProgressChanged(ofmt_ctx->pb->pos, current_time);
 			if (ret < 0) {
 				fprintf(stderr, "Error muxing packet\n");
 				break;
@@ -184,9 +271,12 @@ int saving_network_media(const char *in_filename, const char *out_filename,int64
 		ffmpeg.av_free_packet(&pkt);
 	}
 
-	if (ret == AVERROR_EOF)
+	LOG("download_streaming-->end write......");
+	if (ret == AVERROR_EOF) {
+		LOG("download_streaming--> av_write_trailer......");
 		ffmpeg.av_write_trailer(ofmt_ctx);
-	java_callback_onDownloadFinished();
+		java_callback_onDownloadFinished();
+	}
 	end:
 
 	ffmpeg.avformat_close_input(&ifmt_ctx);
@@ -198,7 +288,8 @@ int saving_network_media(const char *in_filename, const char *out_filename,int64
 
 	if (ret < 0 && ret != AVERROR_EOF) {
 		char error[500];
-		fprintf(stderr, "Error occurred: %s\n", ffmpeg.av_strerror(ret, error, 500));
+		fprintf(stderr, "Error occurred: %s\n",
+				ffmpeg.av_strerror(ret, error, 500));
 		java_callback_onDownloadFailed();
 		return 1;
 	}
@@ -207,75 +298,95 @@ int saving_network_media(const char *in_filename, const char *out_filename,int64
 }
 
 void set_download_flag(int flag) {
+
 	download_flag = flag;
+	if (flag == FLAG_DOWNLOAD_START) {
+		pthread_cond_signal(download_cond);
+	}
 }
 
-int get_download_flag(){
+int get_download_flag() {
 	return download_flag;
 }
 
-int get_duration(){
+int get_duration() {
 	return streaming_duration;
 }
 
-static void java_callback_onDownloadProgressChanged(AVPacket pkt, int current_time){
-    JNIEnv *env;
-    jclass cls;
-    jmethodID mid;
+static void java_callback_onDownloadProgressChanged(int64_t pos,//AVPacket pkt,
+		int current_time) {
+	JNIEnv *env;
+	jclass cls;
+	jmethodID mid;
 
-    if ((*jvm)->AttachCurrentThread(jvm, &env, NULL) != JNI_OK)
-        return -1;
+	int _needDetach = 0;
+	int attachStatus = ATTACH_ERROR;
 
-    cls = (*env)->GetObjectClass(env, java_object);
-    if (cls == NULL)
-        goto error;
-    mid = (*env)->GetMethodID(env, cls, "onDownloadProgressChanged", "(IIJ)V");
-    if (mid == NULL)
-        goto error;
-//    char pts[sizeof(int64_t)*8+1];
-//    lltoa(pkt.pts,pts,DECIMAL);
-    (*env)->CallVoidMethod(env, java_object, mid, download_id, pkt.stream_index,pkt.pts,current_time);
+	attachStatus = JniThreadAttach(&_needDetach, &env);
+	if (attachStatus == ATTACH_ERROR) {
+		return ATTACH_ERROR;
+	}
 
-error:
-    (*jvm)->DetachCurrentThread(jvm);
+	cls = (*env)->GetObjectClass(env, java_object);
+	if (cls == NULL)
+		goto error;
+	mid = (*env)->GetMethodID(env, cls, "onDownloadProgressChanged", "(IJI)V");//J
+	if (mid == NULL)
+		goto error;
+	(*env)->CallVoidMethod(env, java_object, mid, download_id, pos,//pkt.size,
+			current_time);
+//	pkt.stream_index,
+//				pkt.pts,
+
+	error: JniThreadDetach(_needDetach);
+	(*env)->DeleteLocalRef(env, cls);
 }
 
-static void java_callback_onDownloadFinished(){
-    JNIEnv *env;
-    jclass cls;
-    jmethodID mid;
+static void java_callback_onDownloadFinished() {
+	JNIEnv *env;
+	jclass cls;
+	jmethodID mid;
 
-    if ((*jvm)->AttachCurrentThread(jvm, &env, NULL) != JNI_OK)
-        return -1;
+	int _needDetach = 0;
+	int attachStatus = ATTACH_ERROR;
 
-    cls = (*env)->GetObjectClass(env, java_object);
-    if (cls == NULL)
-        goto error;
-    mid = (*env)->GetMethodID(env, cls, "onDownloadFinished", "(I)V");
-    if (mid == NULL)
-        goto error;
-    (*env)->CallVoidMethod(env, java_object, mid, download_id);
+	attachStatus = JniThreadAttach(&_needDetach, &env);
+	if (attachStatus == ATTACH_ERROR) {
+		return ATTACH_ERROR;
+	}
 
-error:
-    (*jvm)->DetachCurrentThread(jvm);
+	cls = (*env)->GetObjectClass(env, java_object);
+	if (cls == NULL)
+		goto error;
+	mid = (*env)->GetMethodID(env, cls, "onDownloadFinished", "(I)V");
+	if (mid == NULL)
+		goto error;
+	(*env)->CallVoidMethod(env, java_object, mid, download_id);
+
+	error: JniThreadDetach(_needDetach);
 }
 
-static void java_callback_onDownloadFailed(){
-    JNIEnv *env;
-    jclass cls;
-    jmethodID mid;
+static void java_callback_onDownloadFailed() {
+	JNIEnv *env;
+	jclass cls;
+	jmethodID mid;
 
-    if ((*jvm)->AttachCurrentThread(jvm, &env, NULL) != JNI_OK)
-        return -1;
+	int _needDetach = 0;
+	int attachStatus = ATTACH_ERROR;
 
-    cls = (*env)->GetObjectClass(env, java_object);
-    if (cls == NULL)
-        goto error;
-    mid = (*env)->GetMethodID(env, cls, "onDownloadFailed", "(I)V");
-    if (mid == NULL)
-        goto error;
-    (*env)->CallVoidMethod(env, java_object, mid, download_id);
+	attachStatus = JniThreadAttach(&_needDetach, &env);
+	if (attachStatus == ATTACH_ERROR) {
+		return ATTACH_ERROR;
+	}
 
-error:
-    (*jvm)->DetachCurrentThread(jvm);
+	cls = (*env)->GetObjectClass(env, java_object);
+	if (cls == NULL)
+		goto error;
+	mid = (*env)->GetMethodID(env, cls, "onDownloadFailed", "(I)V");
+	if (mid == NULL)
+		goto error;
+	(*env)->CallVoidMethod(env, java_object, mid, download_id);
+
+	error: JniThreadDetach(_needDetach);
 }
+

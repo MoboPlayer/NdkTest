@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -44,8 +45,10 @@ import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadLib.StreamingDow
  * 
  */
 public class StreamingDownloadActivity extends Activity {
-	final String url = "http://119.188.183.46/6971FB809DC3E82E6771915798/0300010F0054773716BECD1BC68DEECB589A8A-497B-9704-398E-6922B3EBA9C1.flv";
-	String savePath = Environment.getExternalStorageDirectory().getAbsolutePath()+File.separator;
+	final String url = // "rtmp://183.62.232.213/fileList/video/flv/1/test.flv";
+	"http://27.221.44.43/67732D42DC34A840C9CBC9594E/0300010E0054C96DBA3EF603BAF2B16135A553-86F1-7270-8753-BBB5274B597B.flv";
+	String savePath = Environment.getExternalStorageDirectory()
+			.getAbsolutePath() + File.separator;
 	TextView text_view;
 	SeekBar seek_bar;
 	Button button, button_2;
@@ -82,10 +85,13 @@ public class StreamingDownloadActivity extends Activity {
 			switch (msg.what) {
 			case msg_progress_changed:
 				if (seek_bar.getMax() == 1) {
-					seek_bar.setMax(mStreamingDownloadLib
-							.getDuration(streamingData.id));
+					int duration = mStreamingDownloadLib
+							.getDuration(streamingData.id);
+					seek_bar.setMax(duration);
+					Toast.makeText(StreamingDownloadActivity.this,
+							"时长是：" + duration, Toast.LENGTH_LONG).show();
 				}
-				seek_bar.setProgress(streamingData.progress);
+				seek_bar.setProgress(streamingData.currentTime);
 				break;
 			case msg_download_finished:
 				Toast.makeText(StreamingDownloadActivity.this,
@@ -135,18 +141,22 @@ public class StreamingDownloadActivity extends Activity {
 				if (downloadFlag != 0) {
 					mStreamingDownloadLib.stopDownload(downloadId);
 					button.setText("stoped");
+					downloadFlag = 0;
 				}
 			} else if (v == button) {
 				if (downloadFlag == 0) {
 					downloadId = mStreamingDownloadLib.startDownload(url,
 							savePath);
 					button.setText("downloading...");
+					downloadFlag = 1;
 				} else if (downloadFlag == 1) {
 					button.setText("pausing...");
 					mStreamingDownloadLib.pauseDownload(downloadId);
+					downloadFlag = -1;
 				} else if (downloadFlag == -1) {
 					button.setText("downloading...");
 					mStreamingDownloadLib.resumeDownload(downloadId);
+					downloadFlag = 1;
 				}
 			}
 		}

@@ -165,6 +165,8 @@ typedef struct ffmpeg_func_t {
 	void (*avformat_free_context)(AVFormatContext *s);
 	int64_t (*avio_seek_time)(AVIOContext *s, int stream_index,
 	                       int64_t timestamp, int flags);
+	int64_t (*avio_skip)(AVIOContext * s, int64_t offset);
+	int (*avformat_network_init)(void);
 
 } ffmpeg_func_t;
 
