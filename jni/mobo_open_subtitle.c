@@ -190,9 +190,9 @@ char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff) {
 		get_rescale_time(prev_time, &seek_target_prev, sub_data);
 	get_rescale_time(cur_time + time_diff, &seek_target_after, sub_data);
 
-	seek_target_prev/=1000;
-	seek_target/=1000;
-	seek_target_after/=1000;
+//	seek_target_prev/=1000;
+//	seek_target/=1000;
+//	seek_target_after/=1000;
 
 	ffmpeg.avformat_seek_file(sub_data->fmt_ctx, sub_data->stream->index,
 			seek_target_prev, seek_target, seek_target_after,
@@ -228,7 +228,8 @@ char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff) {
 }
 
 void get_rescale_time(int cur_time, int64_t *res_time, sub_data_p sub_data) {
-	*res_time = cur_time * AV_TIME_BASE;
+//	cur_time/=1000;
+	*res_time = cur_time * 1000;//AV_TIME_BASE--cur_time为毫秒
 	*res_time = ffmpeg.av_rescale_q(*res_time, AV_TIME_BASE_Q,
 			sub_data->stream->time_base);
 }

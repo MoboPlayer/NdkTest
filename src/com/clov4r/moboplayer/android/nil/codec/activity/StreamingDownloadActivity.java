@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -16,9 +15,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.clov4r.moboplayer.android.nil.codec.R;
-import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadLib;
-import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadLib.MoboDownloadListener;
-import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadLib.StreamingDownloadData;
+import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadManager;
+import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadManager.MoboDownloadListener;
+import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadManager.StreamingDownloadData;
 
 /**
  * The MIT License (MIT)
@@ -46,14 +45,14 @@ import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadLib.StreamingDow
  */
 public class StreamingDownloadActivity extends Activity {
 	final String url = // "rtmp://183.62.232.213/fileList/video/flv/1/test.flv";
-	"http://27.221.44.43/67732D42DC34A840C9CBC9594E/0300010E0054C96DBA3EF603BAF2B16135A553-86F1-7270-8753-BBB5274B597B.flv";
+	"http://27.221.44.43/67732F5E9B83B83379D5B74AF9/0300010E0054C96DBA3EF603BAF2B16135A553-86F1-7270-8753-BBB5274B597B.flv";
 	String savePath = Environment.getExternalStorageDirectory()
 			.getAbsolutePath() + File.separator;
 	TextView text_view;
 	SeekBar seek_bar;
 	Button button, button_2;
 
-	StreamingDownloadLib mStreamingDownloadLib = null;
+	StreamingDownloadManager mStreamingDownloadManager=null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -67,12 +66,16 @@ public class StreamingDownloadActivity extends Activity {
 		button_2.setOnClickListener(mOnClickListener);
 
 		savePath += "mobo_download_test.mkv";
-		mStreamingDownloadLib = StreamingDownloadLib.getInstance(this);
-		mStreamingDownloadLib.setDownloadListener(mMoboDownloadListener);
+		mStreamingDownloadManager = StreamingDownloadManager.getInstance(this);
+		mStreamingDownloadManager.setDownloadListener(mMoboDownloadListener);
 		// mStreamingDownloadLib.startDownload(url, savePath);
 		seek_bar.setMax(1);
 	}
 
+	public void onDestroy() {
+		super.onDestroy();
+		mStreamingDownloadManager.stopAll();
+	}
 	final int msg_progress_changed = 111;
 	final int msg_download_finished = 112;
 	final int msg_download_failed = 113;
@@ -85,8 +88,8 @@ public class StreamingDownloadActivity extends Activity {
 			switch (msg.what) {
 			case msg_progress_changed:
 				if (seek_bar.getMax() == 1) {
-					int duration = mStreamingDownloadLib
-							.getDuration(streamingData.id);
+					int duration = mStreamingDownloadManager
+							.getDurationOf(streamingData.id);
 					seek_bar.setMax(duration);
 					Toast.makeText(StreamingDownloadActivity.this,
 							"时长是：" + duration, Toast.LENGTH_LONG).show();
@@ -139,23 +142,24 @@ public class StreamingDownloadActivity extends Activity {
 			// TODO Auto-generated method stub
 			if (v == button_2) {
 				if (downloadFlag != 0) {
-					mStreamingDownloadLib.stopDownload(downloadId);
+					mStreamingDownloadManager.stopDownload(downloadId);
+//					mStreamingDownloadManager.removeDownload(downloadId, false);
 					button.setText("stoped");
 					downloadFlag = 0;
 				}
 			} else if (v == button) {
 				if (downloadFlag == 0) {
-					downloadId = mStreamingDownloadLib.startDownload(url,
+					downloadId = mStreamingDownloadManager.startDownload(url,
 							savePath);
 					button.setText("downloading...");
 					downloadFlag = 1;
 				} else if (downloadFlag == 1) {
 					button.setText("pausing...");
-					mStreamingDownloadLib.pauseDownload(downloadId);
+					mStreamingDownloadManager.pauseDownload(downloadId);
 					downloadFlag = -1;
 				} else if (downloadFlag == -1) {
 					button.setText("downloading...");
-					mStreamingDownloadLib.resumeDownload(downloadId);
+					mStreamingDownloadManager.resumeDownload(downloadId);
 					downloadFlag = 1;
 				}
 			}

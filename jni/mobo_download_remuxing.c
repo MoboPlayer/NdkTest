@@ -30,7 +30,12 @@
 
 #include "mobo_download_remuxing.h"
 
+/**下载视频的总时长**/
 int streaming_duration = 0;
+/**下载开始时间点**/
+int start_downloaded_time = -1;
+/**当前下载到的时间点**/
+int current_time_downloaded_to = 0;
 
 /**-1：暂停；0：停止；1：开始**/
 int download_flag = 1;
@@ -125,6 +130,11 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 	ffmpeg.av_register_all();
 	ffmpeg.avformat_network_init();
 
+	if (skip_bytes > 0) {
+		ifmt_ctx = ffmpeg.avformat_alloc_context();
+		ifmt_ctx->skip_initial_bytes = skip_bytes;
+	}
+
 	if ((ret = ffmpeg.avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0) {
 		ffmpeg.av_strerror(ret, error, 500);
 		LOG("download_streaming-->avformat_open_input res=%s...", error);
@@ -163,6 +173,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 //		LOG("download_streaming-->avio_skip position=%lld...", skip_bytes);
 //		ffmpeg.avio_skip(ifmt_ctx->pb, skip_bytes);
 //	}
+
 	for (i = 0; i < ifmt_ctx->nb_streams; i++) {
 //		if (pts_array){
 //			LOG("download_streaming-->pts_array is not null");
@@ -207,13 +218,13 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 //			}
 //		}
 
-//		if (skip_bytes > 0) {
-//			LOG("download_streaming-->avio_skip position=%lld...", skip_bytes);
-//			ffmpeg.avio_skip(ofmt_ctx->pb, skip_bytes);
-//		}
+		if (skip_bytes > 0) {
+			LOG("download_streaming-->avio_skip position=%lld...", skip_bytes);
+			ffmpeg.avio_skip(ofmt_ctx->pb, skip_bytes);
+		}
 	}
 
-	if (!skip_bytes)//pts_array
+	if (!skip_bytes) //pts_array
 		ret = ffmpeg.avformat_write_header(ofmt_ctx, NULL);
 	if (ret < 0) {
 		fprintf(stderr, "Error occurred when opening output file\n");
@@ -232,7 +243,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 		AVStream *in_stream, *out_stream;
 
 		ret = ffmpeg.av_read_frame(ifmt_ctx, &pkt);
-		if (ret < 0){
+		if (ret < 0) {
 			LOG("download_streaming-->while -- ret=%d...", ret);
 			break;
 		}
@@ -244,8 +255,10 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 		if (fff == 0 && pkt.stream_index == 1) {
 			fff = 1;
 		} else {
-			int current_time = ffmpeg.av_rescale_q(pkt.pts,
-					out_stream->time_base, AV_TIME_BASE_Q) / AV_TIME_BASE;
+			int current = ffmpeg.av_rescale_q(pkt.pts, out_stream->time_base,
+					AV_TIME_BASE_Q) / AV_TIME_BASE;
+			if (skip_bytes && start_downloaded_time == -1)
+				start_downloaded_time = current;
 			/* copy packet */
 			pkt.pts = ffmpeg.av_rescale_q_rnd(pkt.pts, in_stream->time_base,
 					out_stream->time_base,
@@ -258,11 +271,12 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 			pkt.pos = -1;
 			log_packet(ofmt_ctx, &pkt, "out");
 
-			LOG("download_streaming-->while -- before av_interleaved_write_frame...");
 			ret = ffmpeg.av_interleaved_write_frame(ofmt_ctx, &pkt);
-			LOG("download_streaming-->while -- after av_interleaved_write_frame...%d",ret);
-			if (current_time % 2 == 0)
-				java_callback_onDownloadProgressChanged(ofmt_ctx->pb->pos, current_time);
+			if (current > current_time_downloaded_to) {
+				java_callback_onDownloadProgressChanged(ofmt_ctx->pb->pos,
+						current_time_downloaded_to);
+				current_time_downloaded_to = current;
+			}
 			if (ret < 0) {
 				fprintf(stderr, "Error muxing packet\n");
 				break;
@@ -277,13 +291,15 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 		ffmpeg.av_write_trailer(ofmt_ctx);
 		java_callback_onDownloadFinished();
 	}
-	end:
-
+	end: ffmpeg.av_strerror(ret, error, 500);
+	LOG("download_streaming-->avformat_open_input res=%s...", error);
 	ffmpeg.avformat_close_input(&ifmt_ctx);
 
 	/* close output */
-	if (ofmt_ctx && !(ofmt->flags & AVFMT_NOFILE))
+	if (ofmt_ctx && !(ofmt->flags & AVFMT_NOFILE)) {
+		LOG("download_streaming-->avio_close......");
 		ffmpeg.avio_close(ofmt_ctx->pb);
+	}
 	ffmpeg.avformat_free_context(ofmt_ctx);
 
 	if (ret < 0 && ret != AVERROR_EOF) {
@@ -313,8 +329,17 @@ int get_duration() {
 	return streaming_duration;
 }
 
-static void java_callback_onDownloadProgressChanged(int64_t pos,//AVPacket pkt,
+int get_current_time_downloaded_to() {
+	return current_time_downloaded_to;
+}
+
+int get_start_downloaded_time() {
+	return start_downloaded_time;
+}
+
+static void java_callback_onDownloadProgressChanged(int64_t pos, //AVPacket pkt,
 		int current_time) {
+	LOG("download_streaming-->onDownloadProgressChanged -- current_time=%d...", current_time);
 	JNIEnv *env;
 	jclass cls;
 	jmethodID mid;
@@ -330,13 +355,11 @@ static void java_callback_onDownloadProgressChanged(int64_t pos,//AVPacket pkt,
 	cls = (*env)->GetObjectClass(env, java_object);
 	if (cls == NULL)
 		goto error;
-	mid = (*env)->GetMethodID(env, cls, "onDownloadProgressChanged", "(IJI)V");//J
+	mid = (*env)->GetMethodID(env, cls, "onDownloadProgressChanged", "(JI)V");
 	if (mid == NULL)
 		goto error;
-	(*env)->CallVoidMethod(env, java_object, mid, download_id, pos,//pkt.size,
+	(*env)->CallVoidMethod(env, java_object, mid, pos, //pkt.size,
 			current_time);
-//	pkt.stream_index,
-//				pkt.pts,
 
 	error: JniThreadDetach(_needDetach);
 	(*env)->DeleteLocalRef(env, cls);
@@ -361,7 +384,7 @@ static void java_callback_onDownloadFinished() {
 	mid = (*env)->GetMethodID(env, cls, "onDownloadFinished", "(I)V");
 	if (mid == NULL)
 		goto error;
-	(*env)->CallVoidMethod(env, java_object, mid, download_id);
+	(*env)->CallVoidMethod(env, java_object, mid);
 
 	error: JniThreadDetach(_needDetach);
 }
@@ -385,7 +408,7 @@ static void java_callback_onDownloadFailed() {
 	mid = (*env)->GetMethodID(env, cls, "onDownloadFailed", "(I)V");
 	if (mid == NULL)
 		goto error;
-	(*env)->CallVoidMethod(env, java_object, mid, download_id);
+	(*env)->CallVoidMethod(env, java_object, mid);
 
 	error: JniThreadDetach(_needDetach);
 }

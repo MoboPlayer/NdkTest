@@ -257,6 +257,9 @@ int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_
 	ffmpeg_func_p->avio_skip = dlsym(handle, "avio_skip");
 	FF_FUNC_CHECK(ffmpeg_func_p->avio_skip);
 
+	ffmpeg_func_p->avformat_alloc_context = dlsym(handle, "avformat_alloc_context");
+	FF_FUNC_CHECK(ffmpeg_func_p->avformat_alloc_context);
+
 	if ((error = dlerror()) != NULL)  {
 		LOG("!!!can't find sym in ffmpeg.so : %s",error);
 		return -1;

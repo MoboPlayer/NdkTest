@@ -32,13 +32,15 @@ public class DataSaveLib {
 	}
 
 	private void initPath(Context context, String fileName, boolean isInner) {
+		mContext = context;
 		String rootPath = null;
 		if (isInner) {
-			rootPath = context.getExternalFilesDir(null).toString();
+			rootPath = context.getFilesDir().getAbsolutePath();// context.getExternalFilesDir(null).toString();
 		} else {
 			rootPath = getDataSavePath();
 		}
-		saveDirPath = rootPath + flag_serializable_data + File.separator;
+		saveDirPath = rootPath + File.separator + flag_serializable_data
+				+ File.separator;
 		saveFilePath = saveDirPath + fileName;
 		saveDir = new File(saveDirPath);
 		boolean created = false;

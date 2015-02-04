@@ -86,9 +86,9 @@ public class MainActivity extends ActionBarActivity {
 		StringBuffer sb = new StringBuffer();
 		h.loadFFmpegLibs(libpath, libname);
 
-		int count = h.isSubtitleExits(filePath);
+//		int count = h.isSubtitleExits(filePath);
 
-		sb.append("字幕个数：" + count + "\n");
+//		sb.append("字幕个数：" + count + "\n");
 		// for(int i=0;i<count;i++) {
 		// sb.append("第"+i+"个字幕："+h.getSubtitleLanguage(filePath, i)+"\n");
 		// }
@@ -112,15 +112,39 @@ public class MainActivity extends ActionBarActivity {
 		// }
 		// }
 
-		tv.setText(sb.toString());
+		// tv.setText(sb.toString());
+		//
+		// h.closeSubtitle(0);
 
-		h.closeSubtitle(0);
+		int numOfSubtitle = SubtitleJni.getInstance().isSubtitleExits(filePath);
+		if (numOfSubtitle > 0) {
+			int flag = SubtitleJni.getInstance()
+					.openSubtitleFile_2(filePath, 0);
+			mThread.start();
+		}
+	}
 
-		Intent intent = new Intent(Intent.ACTION_VIEW);
-		intent.setDataAndType(
-				Uri.parse("http://27.221.44.43/67732D42DC34A840C9CBC9594E/0300010E0054C96DBA3EF603BAF2B16135A553-86F1-7270-8753-BBB5274B597B.flv"),
-				"video/*");
-		startActivity(intent);
+	Thread mThread = new Thread() {
+		@Override
+		public void run() {
+			int timeBegin = 0;
+			int timeEnd = 3 * 60 * 1000;
+			for (int t = timeBegin; t < timeEnd; t += 1000) {
+				Log.e("testMobo", "150204 - t =" + t + "subtitle = "
+						+ getSubtitle(t));
+				try {
+					sleep(50);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
+		}
+	};
+
+	protected String getSubtitle(int currentTime) {
+		return SubtitleJni.getInstance().getSubtitleByTime_2(currentTime);
 	}
 
 	private boolean isUtf8Encode(String filePath) {
