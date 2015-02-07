@@ -192,7 +192,7 @@ public class SubtitleJni extends BaseJNILib {
 	 * @return
 	 */
 	public String getSubtitleByTime_2(int time) {
-		return getSubtitleByTime2(time, 0, 100);
+		return getSubtitleByTime2(time, 0, 200);
 	}
 
 	public native int getSubtitleType(int subtiltle_index);

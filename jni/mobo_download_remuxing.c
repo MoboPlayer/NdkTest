@@ -54,18 +54,18 @@ static int JniThreadAttach(int *needDetach, JNIEnv **_env) {
 	*needDetach = 0;
 	getEnvStat = (*jvm)->GetEnv(jvm, _env, JNI_VERSION_1_6);
 	if (getEnvStat == JNI_EDETACHED) {
-		LOG("JNI_EDETACHED");
+//		LOG("JNI_EDETACHED");
 		if ((*jvm)->AttachCurrentThread(jvm, (void **) _env, NULL) == 0) {
 			*needDetach = 1;
 			return ATTACH_SUCCESS;
 		} else {
-			LOG("Failed to attach");
+//			LOG("Failed to attach");
 			return ATTACH_ERROR;
 		}
 	} else if (getEnvStat == JNI_OK) {
-		LOG("JNI_OK");
+//		LOG("JNI_OK");
 	} else if (getEnvStat == JNI_EVERSION) {
-		LOG("JNI_EVERSION");
+//		LOG("JNI_EVERSION");
 	}
 
 	return ATTACH_SUCCESS;

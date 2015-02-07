@@ -80,7 +80,7 @@ public class MainActivity extends ActionBarActivity {
 		String libpath = getFilesDir().getParent() + "/lib/";
 		String libname = "libffmpeg_armv7_neon.so";
 		String filePath = Environment.getExternalStorageDirectory()
-				+ "/Movies/03181751_1684.MP4";// videoName;Gone.srt//Godzilla.srt//output_file_low.mkv
+				+ "/Movies/output_file_low.mkv";// videoName;Gone.srt//Godzilla.srt//output_file_low.mkv
 
 		Log.e("params", libpath + " " + filePath);
 		StringBuffer sb = new StringBuffer();
@@ -120,28 +120,34 @@ public class MainActivity extends ActionBarActivity {
 		if (numOfSubtitle > 0) {
 			int flag = SubtitleJni.getInstance()
 					.openSubtitleFile_2(filePath, 0);
-			mThread.start();
+//			mThread.start();
+			getSubtitle();
 		}
 	}
 
 	Thread mThread = new Thread() {
 		@Override
 		public void run() {
-			int timeBegin = 0;
-			int timeEnd = 3 * 60 * 1000;
-			for (int t = timeBegin; t < timeEnd; t += 1000) {
-				Log.e("testMobo", "150204 - t =" + t + "subtitle = "
-						+ getSubtitle(t));
-				try {
-					sleep(50);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-
+			getSubtitle();
 		}
 	};
+	
+	public void getSubtitle(){
+		int timeBegin = 0;
+		int timeEnd = 3 * 60 * 1000;
+		for (int t = timeBegin; t < timeEnd; t += 1000) {
+			Log.e("testMobo", "150204 - t =" + t + "subtitle = "
+					+ getSubtitle(t));
+//			try {
+//				sleep(50);
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+		}
+
+		
+	}
 
 	protected String getSubtitle(int currentTime) {
 		return SubtitleJni.getInstance().getSubtitleByTime_2(currentTime);

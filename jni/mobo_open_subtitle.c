@@ -169,6 +169,9 @@ char *get_subtitle_ontime(int cur_time, int subtiltle_index) {
 	return subtitle_text;
 }
 
+/**字幕文件的seekfile不准，暂时从跳转时间之前5秒开始读包并判断**/
+#define TIME_PRE_ADJUSTMENT 5000
+#define SEEK_FORWARD_PACKET_NUM 50
 char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff) {
 	if (!g_sub_p[subtiltle_index]) {
 		return NULL;
@@ -184,41 +187,69 @@ char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff) {
 	sub_data_p sub_data = g_sub_p[subtiltle_index];
 	ffmpeg.av_init_packet(&packet);
 
-	int prev_time = cur_time - time_diff;
-	get_rescale_time(cur_time, &seek_target, sub_data);
-	if (cur_time > time_diff)
+	int seek_time;
+	if (cur_time > TIME_PRE_ADJUSTMENT)
+		seek_time = cur_time - TIME_PRE_ADJUSTMENT;
+	else
+		seek_time = 0;
+//	LOG("open_subtitle-->read_packet--seek_time=%d", seek_time);
+
+	int prev_time = seek_time - time_diff;
+	get_rescale_time(seek_time, &seek_target, sub_data);
+	if (seek_time > time_diff)
 		get_rescale_time(prev_time, &seek_target_prev, sub_data);
-	get_rescale_time(cur_time + time_diff, &seek_target_after, sub_data);
+	get_rescale_time(seek_time + time_diff, &seek_target_after, sub_data);
 
 //	seek_target_prev/=1000;
 //	seek_target/=1000;
 //	seek_target_after/=1000;
 
-	ffmpeg.avformat_seek_file(sub_data->fmt_ctx, sub_data->stream->index,
-			seek_target_prev, seek_target, seek_target_after,
-			AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_ANY);
+	int seek_res = ffmpeg.avformat_seek_file(sub_data->fmt_ctx,
+			sub_data->stream->index, seek_target_prev, seek_target,
+			seek_target_after, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_ANY);
 //	LOG("open_subtitle-->cur_time=%d+++time_diff=%d", cur_time, time_diff);
+
+	LOG("open_subtitle-->seek_res=%d,seek_target_prev=%lld,seek_target=%lld,seek_target_after=%lld", seek_res, seek_target_prev, seek_target, seek_target_after);
+	if (seek_res < 0)
+		return NULL;
 
 	int got_frame = 0;
 	while (!got_frame && ffmpeg.av_read_frame(sub_data->fmt_ctx, &packet) >= 0) {
 		if (packet.stream_index == sub_data->stream->index) {
 			ret = ffmpeg.avcodec_decode_subtitle2(sub_data->dec_ctx, subtitle,
 					&got_frame, &packet);
+			int pts2time = ffmpeg.av_rescale_q(packet.pts,
+					sub_data->stream->time_base, AV_TIME_BASE_Q) / 1000;
+			LOG("open_subtitle-->read_packet--res=%d,%d", ret, pts2time);
 			if (ret < 0) {
 				ffmpeg.avsubtitle_free(subtitle);
 				break;
 			}
 
-			if (got_frame && subtitle->num_rects) {
-				AVSubtitleRect *ffregion = subtitle->rects[0];
-				if (ffregion) {
-					if (ffregion->type == SUBTITLE_TEXT) {
-						subtitle_text = ffregion->text;
-					} else if (ffregion->type == SUBTITLE_ASS) {
-						subtitle_text = sj_get_raw_text_from_ssa(ffregion->ass);
+			if (got_frame) {
+				int start_time = subtitle->start_display_time + pts2time
+						- time_diff;
+				int end_time = subtitle->end_display_time + pts2time
+						+ time_diff;
+				LOG("open_subtitle-->cur_time=%d,start_display_time=%d,end_display_time=%d", cur_time, start_time, end_time);
+				if (cur_time >= start_time && cur_time <= end_time) {
+					if (subtitle->num_rects) {
+						AVSubtitleRect *ffregion = subtitle->rects[0];
+						if (ffregion) {
+							if (ffregion->type == SUBTITLE_TEXT) {
+								subtitle_text = ffregion->text;
+							} else if (ffregion->type == SUBTITLE_ASS) {
+								subtitle_text = sj_get_raw_text_from_ssa(
+										ffregion->ass);
+							}
+							LOG("open_subtitle-->%s", subtitle_text);
+						}
 					}
 					break;
-				}
+				} else if (cur_time < start_time)
+					break;
+				else
+					got_frame = 0;
 			}
 		}
 		ffmpeg.av_free_packet(&packet);
@@ -229,7 +260,7 @@ char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff) {
 
 void get_rescale_time(int cur_time, int64_t *res_time, sub_data_p sub_data) {
 //	cur_time/=1000;
-	*res_time = cur_time * 1000;//AV_TIME_BASE--cur_time为毫秒
+	*res_time = cur_time * 1000; //AV_TIME_BASE--cur_time为毫秒
 	*res_time = ffmpeg.av_rescale_q(*res_time, AV_TIME_BASE_Q,
 			sub_data->stream->time_base);
 }
