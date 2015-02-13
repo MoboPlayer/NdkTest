@@ -50,18 +50,18 @@ int init_mutex_cond();
 
 void des_mutex_cond();
 
-int saving_network_media(const char *in_filename, const char *out_filename,int64_t skip_bytes);//pts_array[]
+int saving_network_media(const char *in_filename, const char *out_filename,
+		int64_t *pts_ptr, int64_t skip_bytes);
 
 void set_download_flag(int flag);
 
 int get_duration();
 
-int get_current_time_downloaded_to() ;
+int get_current_time_downloaded_to();
 
 int get_start_downloaded_time();
 
-
-static void java_callback_onDownloadProgressChanged(int64_t pos,int current_time);//AVPacket pkt
+static void java_callback_onDownloadProgressChanged(int64_t pos, int64_t pts_array[],int stream_num, int current_time);
 
 static void java_callback_onDownloadFinished();
 

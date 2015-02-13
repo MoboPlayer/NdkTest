@@ -36,11 +36,14 @@ int streaming_duration = 0;
 int start_downloaded_time = -1;
 /**当前下载到的时间点**/
 int current_time_downloaded_to = 0;
+int current_stream_index = 0;
 
 /**-1：暂停；0：停止；1：开始**/
 int download_flag = 1;
 #define ATTACH_ERROR    -4
 #define ATTACH_SUCCESS  0
+
+#define MAX_STREAM_COUNT  15
 
 static pthread_mutex_t* download_mutex;
 static pthread_cond_t* download_cond;
@@ -116,8 +119,43 @@ void des_mutex_cond() {
 		download_mutex = NULL;
 	}
 }
+
+static int get_pts_of_streams(char* file_path, int64_t *pts_ptr) {
+	int ret;
+	AVFormatContext *fmt_ctx = NULL;
+	int i;
+
+	LOG("download_streaming-->get_pts_of_streams--%s...", file_path);
+	if ((ret = ffmpeg.avformat_open_input(&fmt_ctx, file_path, 0, 0))
+			< 0) {
+		fprintf(stderr, "Could not open source file %s\n", file_path);
+		char error[500];
+		ffmpeg.av_strerror(ret, error, 500);
+		LOG("download_streaming-->avformat_open_input--%s...", error);
+		return -1;
+	}
+
+	/* retrieve stream information */
+	if ((ret = ffmpeg.avformat_find_stream_info(fmt_ctx, NULL)) < 0) {
+		fprintf(stderr, "Could not find stream information\n");
+		char error[500];
+		ffmpeg.av_strerror(ret, error, 500);
+		LOG("download_streaming-->avformat_find_stream_info--%s...", error);
+		return -2;
+	}
+
+	for (i = 0; i < fmt_ctx->nb_streams; i++) {
+		pts_ptr[i] = fmt_ctx->streams[i];
+		LOG("download_streaming-->stream pts=%lld...", pts_ptr[i]);
+	}
+
+	ffmpeg.avformat_close_input(&fmt_ctx);
+	fmt_ctx = NULL;
+	return ret;
+}
+
 int saving_network_media(const char *in_filename, const char *out_filename,
-		int64_t skip_bytes) { //int64_t pts_array[]
+		int64_t *pts_ptr, int64_t skip_bytes) { //int64_t pts_array[]//
 	int fff = 0;
 
 	AVOutputFormat *ofmt = NULL;
@@ -126,14 +164,12 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 	int ret, i;
 	int flag = 0;
 	char error[500];
+	int64_t pts_array[MAX_STREAM_COUNT];
 
 	ffmpeg.av_register_all();
 	ffmpeg.avformat_network_init();
 
-	if (skip_bytes > 0) {
-		ifmt_ctx = ffmpeg.avformat_alloc_context();
-		ifmt_ctx->skip_initial_bytes = skip_bytes;
-	}
+//	get_pts_of_streams(in_filename, pts_ptr);
 
 	if ((ret = ffmpeg.avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0) {
 		ffmpeg.av_strerror(ret, error, 500);
@@ -144,7 +180,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 	if ((ret = ffmpeg.avformat_find_stream_info(ifmt_ctx, 0)) < 0) {
 		fprintf(stderr, "Failed to retrieve input stream information");
 		ffmpeg.av_strerror(ret, error, 500);
-		LOG("download_streaming-->avformat_open_input res=%s...", error);
+		LOG("download_streaming-->avformat_find_stream_info res=%s...", error);
 		goto end;
 	}
 
@@ -161,18 +197,13 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 	if (!ofmt_ctx) {
 		fprintf(stderr, "Could not create output context\n");
 		ret = AVERROR_UNKNOWN;
-		LOG("download_streaming-->avformat_open_input res=%s...", error);
+		LOG("download_streaming-->Could not create output context res=%s...", error);
 		goto end;
 	}
 
 	ofmt = ofmt_ctx->oformat;
 
 	LOG("download_streaming-->before for");
-
-//	if (skip_bytes > 0) {
-//		LOG("download_streaming-->avio_skip position=%lld...", skip_bytes);
-//		ffmpeg.avio_skip(ifmt_ctx->pb, skip_bytes);
-//	}
 
 	for (i = 0; i < ifmt_ctx->nb_streams; i++) {
 //		if (pts_array){
@@ -185,6 +216,14 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 //			LOG("download_streaming-->seek out successed");
 //		}
 		AVStream *in_stream = ifmt_ctx->streams[i];
+		if (pts_ptr) {
+			int64_t seek_time_int64t = pts_ptr[i];
+			int seek_res = -1;
+			if (seek_time_int64t > 0)
+				seek_res = ffmpeg.avformat_seek_file(ifmt_ctx, i, INT64_MIN,
+						seek_time_int64t, INT64_MAX, AVSEEK_FLAG_BACKWARD); // | AVSEEK_FLAG_ANY
+			LOG("download_streaming-->seek stream+++seek_time=%lld+++seek_res=%d", seek_time_int64t, seek_res);
+		}
 		AVStream *out_stream = ffmpeg.avformat_new_stream(ofmt_ctx,
 				in_stream->codec->codec);
 		if (!out_stream) {
@@ -219,13 +258,14 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 //		}
 
 		if (skip_bytes > 0) {
-			LOG("download_streaming-->avio_skip position=%lld...", skip_bytes);
+			LOG("download_streaming-->avio_skip position=%lld...ofmt_ctx->pb->pos=%lld", skip_bytes, ofmt_ctx->pb->pos);
 			ffmpeg.avio_skip(ofmt_ctx->pb, skip_bytes);
 		}
+
 	}
 
-	if (!skip_bytes) //pts_array
-		ret = ffmpeg.avformat_write_header(ofmt_ctx, NULL);
+//	if (seek_time <= 0) //pts_array
+	ret = ffmpeg.avformat_write_header(ofmt_ctx, NULL);
 	if (ret < 0) {
 		fprintf(stderr, "Error occurred when opening output file\n");
 		goto end;
@@ -248,6 +288,9 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 			break;
 		}
 
+		if (pts_ptr && pkt.pts <= pts_ptr[pkt.stream_index])
+			continue;
+
 		in_stream = ifmt_ctx->streams[pkt.stream_index];
 		out_stream = ofmt_ctx->streams[pkt.stream_index];
 
@@ -257,7 +300,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 		} else {
 			int current = ffmpeg.av_rescale_q(pkt.pts, out_stream->time_base,
 					AV_TIME_BASE_Q) / AV_TIME_BASE;
-			if (skip_bytes && start_downloaded_time == -1)
+			if (pts_ptr && start_downloaded_time == -1)
 				start_downloaded_time = current;
 			/* copy packet */
 			pkt.pts = ffmpeg.av_rescale_q_rnd(pkt.pts, in_stream->time_base,
@@ -271,10 +314,12 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 			pkt.pos = -1;
 			log_packet(ofmt_ctx, &pkt, "out");
 
+			pts_array[pkt.stream_index] = pkt.pts;
+			LOG("download_streaming-->while -- pts=%lld...stream_index=%d", pkt.pts, pkt.stream_index);
 			ret = ffmpeg.av_interleaved_write_frame(ofmt_ctx, &pkt);
 			if (current > current_time_downloaded_to) {
 				java_callback_onDownloadProgressChanged(ofmt_ctx->pb->pos,
-						current_time_downloaded_to);
+						pts_array, ifmt_ctx->nb_streams, current);
 				current_time_downloaded_to = current;
 			}
 			if (ret < 0) {
@@ -292,7 +337,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 		java_callback_onDownloadFinished();
 	}
 	end: ffmpeg.av_strerror(ret, error, 500);
-	LOG("download_streaming-->avformat_open_input res=%s...", error);
+	LOG("download_streaming-->goto end res=%s...", error);
 	ffmpeg.avformat_close_input(&ifmt_ctx);
 
 	/* close output */
@@ -306,7 +351,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 		char error[500];
 		fprintf(stderr, "Error occurred: %s\n",
 				ffmpeg.av_strerror(ret, error, 500));
-		java_callback_onDownloadFailed();
+		java_callback_onDownloadFailed(error);
 		return 1;
 	}
 
@@ -337,12 +382,13 @@ int get_start_downloaded_time() {
 	return start_downloaded_time;
 }
 
-static void java_callback_onDownloadProgressChanged(int64_t pos, //AVPacket pkt,
-		int current_time) {
+static void java_callback_onDownloadProgressChanged(int64_t pos,
+		int64_t pts_array[], int stream_num, int current_time) {
 	LOG("download_streaming-->onDownloadProgressChanged -- current_time=%d...", current_time);
 	JNIEnv *env;
 	jclass cls;
 	jmethodID mid;
+	int i;
 
 	int _needDetach = 0;
 	int attachStatus = ATTACH_ERROR;
@@ -355,11 +401,15 @@ static void java_callback_onDownloadProgressChanged(int64_t pos, //AVPacket pkt,
 	cls = (*env)->GetObjectClass(env, java_object);
 	if (cls == NULL)
 		goto error;
-	mid = (*env)->GetMethodID(env, cls, "onDownloadProgressChanged", "(JI)V");
+
+	mid = (*env)->GetMethodID(env, cls, "onDownloadProgressChanged", "(JIIJ)V");
+
 	if (mid == NULL)
 		goto error;
-	(*env)->CallVoidMethod(env, java_object, mid, pos, //pkt.size,
-			current_time);
+
+	for (i = 0; i < stream_num; i++)
+		(*env)->CallVoidMethod(env, java_object, mid, pos, current_time, i,
+				pts_array[i]);
 
 	error: JniThreadDetach(_needDetach);
 	(*env)->DeleteLocalRef(env, cls);
@@ -381,7 +431,7 @@ static void java_callback_onDownloadFinished() {
 	cls = (*env)->GetObjectClass(env, java_object);
 	if (cls == NULL)
 		goto error;
-	mid = (*env)->GetMethodID(env, cls, "onDownloadFinished", "(I)V");
+	mid = (*env)->GetMethodID(env, cls, "onDownloadFinished", "()V");
 	if (mid == NULL)
 		goto error;
 	(*env)->CallVoidMethod(env, java_object, mid);
@@ -389,7 +439,7 @@ static void java_callback_onDownloadFinished() {
 	error: JniThreadDetach(_needDetach);
 }
 
-static void java_callback_onDownloadFailed() {
+static void java_callback_onDownloadFailed(char* msg) {
 	JNIEnv *env;
 	jclass cls;
 	jmethodID mid;
@@ -405,10 +455,12 @@ static void java_callback_onDownloadFailed() {
 	cls = (*env)->GetObjectClass(env, java_object);
 	if (cls == NULL)
 		goto error;
-	mid = (*env)->GetMethodID(env, cls, "onDownloadFailed", "(I)V");
+	mid = (*env)->GetMethodID(env, cls, "onDownloadFailed",
+			"(Ljava/lang/String;)V");
 	if (mid == NULL)
 		goto error;
-	(*env)->CallVoidMethod(env, java_object, mid);
+	(*env)->CallVoidMethod(env, java_object, mid,
+			(*env)->NewStringUTF(env, msg));
 
 	error: JniThreadDetach(_needDetach);
 }

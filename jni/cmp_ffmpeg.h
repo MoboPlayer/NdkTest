@@ -169,7 +169,6 @@ typedef struct ffmpeg_func_t {
 	int (*avformat_network_init)(void);
 	AVFormatContext* (*avformat_alloc_context)(void);
 
-
 } ffmpeg_func_t;
 
 #define FF_FUNC_CHECK(X) \

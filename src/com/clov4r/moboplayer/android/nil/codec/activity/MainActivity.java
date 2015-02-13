@@ -86,9 +86,9 @@ public class MainActivity extends ActionBarActivity {
 		StringBuffer sb = new StringBuffer();
 		h.loadFFmpegLibs(libpath, libname);
 
-//		int count = h.isSubtitleExits(filePath);
+		// int count = h.isSubtitleExits(filePath);
 
-//		sb.append("字幕个数：" + count + "\n");
+		// sb.append("字幕个数：" + count + "\n");
 		// for(int i=0;i<count;i++) {
 		// sb.append("第"+i+"个字幕："+h.getSubtitleLanguage(filePath, i)+"\n");
 		// }
@@ -116,13 +116,14 @@ public class MainActivity extends ActionBarActivity {
 		//
 		// h.closeSubtitle(0);
 
-		int numOfSubtitle = SubtitleJni.getInstance().isSubtitleExits(filePath);
-		if (numOfSubtitle > 0) {
-			int flag = SubtitleJni.getInstance()
-					.openSubtitleFile_2(filePath, 0);
-//			mThread.start();
-			getSubtitle();
-		}
+		// int numOfSubtitle =
+		// SubtitleJni.getInstance().isSubtitleExits(filePath);
+		// if (numOfSubtitle > 0) {
+		// int flag = SubtitleJni.getInstance()
+		// .openSubtitleFile_2(filePath, 0);
+		// // mThread.start();
+		// getSubtitle();
+		// }
 	}
 
 	Thread mThread = new Thread() {
@@ -131,22 +132,21 @@ public class MainActivity extends ActionBarActivity {
 			getSubtitle();
 		}
 	};
-	
-	public void getSubtitle(){
+
+	public void getSubtitle() {
 		int timeBegin = 0;
 		int timeEnd = 3 * 60 * 1000;
 		for (int t = timeBegin; t < timeEnd; t += 1000) {
 			Log.e("testMobo", "150204 - t =" + t + "subtitle = "
 					+ getSubtitle(t));
-//			try {
-//				sleep(50);
-//			} catch (InterruptedException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
+			// try {
+			// sleep(50);
+			// } catch (InterruptedException e) {
+			// // TODO Auto-generated catch block
+			// e.printStackTrace();
+			// }
 		}
 
-		
 	}
 
 	protected String getSubtitle(int currentTime) {
