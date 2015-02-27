@@ -31,7 +31,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE    := mobo_jni_util
 LOCAL_C_INCLUDES:= F:\MoboPlayer\codec\ffmpeg\FFmpeg-master
 LOCAL_SRC_FILES := mobo_subtitle_jni.c cmp_ffmpeg.c mobo_open_subtitle.c mobo_thumbnail_jni.c mobo_thumbnail.c mobo_load_ffmpeg.c mobo_download_jni.c \
-                   mobo_download_remuxing.c ffserver.c cmdutil.c ffserver_config.c
+                   mobo_download_remuxing.c #ffserver.c cmdutil.c ffserver_config.c
 LOCAL_LDLIBS    := -llog
 LOCAL_CFLAGS := -DNEED_ANDROID_LOG=1
 include $(BUILD_SHARED_LIBRARY)

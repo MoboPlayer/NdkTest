@@ -260,6 +260,12 @@ int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_
 	ffmpeg_func_p->avformat_alloc_context = dlsym(handle, "avformat_alloc_context");
 	FF_FUNC_CHECK(ffmpeg_func_p->avformat_alloc_context);
 
+	ffmpeg_func_p->avio_flush = dlsym(handle, "avio_flush");
+	FF_FUNC_CHECK(ffmpeg_func_p->avio_flush);
+
+	ffmpeg_func_p->avio_write = dlsym(handle, "avio_write");
+	FF_FUNC_CHECK(ffmpeg_func_p->avio_write);
+
 	if ((error = dlerror()) != NULL)  {
 		LOG("!!!can't find sym in ffmpeg.so : %s",error);
 		return -1;

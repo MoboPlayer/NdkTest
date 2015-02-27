@@ -45,7 +45,7 @@ import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadManager.Streamin
  */
 public class StreamingDownloadActivity extends Activity {
 	final String url = // "rtmp://183.62.232.213/fileList/video/flv/1/test.flv";
-	"http://119.188.183.53/6771CDC4FF149836C608A0414F/030001100054D4F11AC141080D48DDC6B4DCB7-B9E5-7739-4C5E-C96FE55D8F75.flv";
+	"http://113.6.237.233/6571393840C3972D6492D6EF9/030001100054D4F11AC141080D48DDC6B4DCB7-B9E5-7739-4C5E-C96FE55D8F75.flv";
 	String savePath = Environment.getExternalStorageDirectory()
 			.getAbsolutePath() + File.separator;
 	TextView text_view;

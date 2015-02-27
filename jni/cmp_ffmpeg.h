@@ -152,22 +152,28 @@ typedef struct ffmpeg_func_t {
 			const int srcStride[], int srcSliceY, int srcSliceH,
 			uint8_t * const dst[], const int dstStride[]);
 
-	int (*avformat_alloc_output_context2)(AVFormatContext **ctx, AVOutputFormat *oformat,
-	                                   const char *format_name, const char *filename);
+	int (*avformat_alloc_output_context2)(AVFormatContext **ctx,
+			AVOutputFormat *oformat, const char *format_name,
+			const char *filename);
 	AVStream* (*avformat_new_stream)(AVFormatContext *s, const AVCodec *c);
-	int (*avcodec_copy_context)(AVCodecContext *dest, const AVCodecContext *src);
+	int (*avcodec_copy_context)(AVCodecContext *dest,
+			const AVCodecContext *src);
 	int (*avio_open)(AVIOContext **s, const char *url, int flags);
 	int (*avformat_write_header)(AVFormatContext *s, AVDictionary **options);
-	int64_t (*av_rescale_q_rnd)(int64_t a, AVRational bq, AVRational cq,enum AVRounding rnd);
+	int64_t (*av_rescale_q_rnd)(int64_t a, AVRational bq, AVRational cq,
+			enum AVRounding rnd);
 	int (*av_interleaved_write_frame)(AVFormatContext *s, AVPacket *pkt);
 	int (*avio_close)(AVIOContext *s);
 	int (*av_write_trailer)(AVFormatContext *s);
 	void (*avformat_free_context)(AVFormatContext *s);
 	int64_t (*avio_seek_time)(AVIOContext *s, int stream_index,
-	                       int64_t timestamp, int flags);
+			int64_t timestamp, int flags);
 	int64_t (*avio_skip)(AVIOContext * s, int64_t offset);
 	int (*avformat_network_init)(void);
 	AVFormatContext* (*avformat_alloc_context)(void);
+	void (*avio_flush)(AVIOContext *s);
+
+	void (*avio_write)(AVIOContext * s, const unsigned char * buf, int size);
 
 } ffmpeg_func_t;
 

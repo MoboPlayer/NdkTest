@@ -73,8 +73,8 @@ void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeSto
 		JNIEnv* env, jobject thiz) {
 	set_download_flag(FLAG_DOWNLOAD_STOP);
 	des_mutex_cond();
-	java_object = NULL;
-	jvm = NULL;
+//	java_object = NULL;
+//	jvm = NULL;
 }
 
 jint Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeGetDuration(
