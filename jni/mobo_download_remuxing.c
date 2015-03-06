@@ -169,6 +169,75 @@ static int get_pts_of_streams(char* file_path, int64_t *pts_ptr) {
 	return ret;
 }
 
+static int64_t get_file_size(char *input_url) {
+	AVIOContext *input;
+	int res = avio_open2(&input, input_url, AVIO_FLAG_READ, NULL, NULL);
+	if (res)
+		return 0;
+	return avio_size(input);
+}
+
+static void rewrite_exist_file(char *out_file, AVFormatContext *ofmt_ctx) {
+	AVFormatContext *ifmt_ctx_exist = NULL;
+	AVPacket pkt;
+	char error[500];
+	int ret;
+	if ((ret = ffmpeg.avformat_open_input(&ifmt_ctx_exist, out_file, 0, 0))
+			< 0) {
+		ffmpeg.av_strerror(ret, error, 500);
+		LOG("download_streaming-->avformat_open_input res=%s...", error);
+		goto end;
+	}
+
+	if ((ret = ffmpeg.avformat_find_stream_info(ifmt_ctx_exist, 0)) < 0) {
+		fprintf(stderr, "Failed to retrieve input stream information");
+		ffmpeg.av_strerror(ret, error, 500);
+		LOG("download_streaming-->avformat_find_stream_info res=%s...", error);
+		goto end;
+	}
+
+	LOG("download_streaming-->avformat_open_input after");
+	ffmpeg.av_dump_format(ifmt_ctx_exist, 0, out_file, 0);
+
+	while (download_flag) {
+		ret = ffmpeg.av_read_frame(ifmt_ctx_exist, &pkt);
+		if (ret < 0) {
+			LOG("download_streaming-->while -- ret=%d...", ret);
+			break;
+		}
+		ret = ffmpeg.av_interleaved_write_frame(ofmt_ctx, &pkt);
+		ffmpeg.av_free_packet(&pkt);
+	}
+	end: ffmpeg.avformat_close_input(&ifmt_ctx_exist);
+}
+
+static void write_existed(char *out_file, AVFormatContext *ofmt_ctx) {
+	AVIOContext *input, *output = ofmt_ctx->pb;
+	int ret;
+	char error[500];
+
+	ret = ffmpeg.avio_open(&input, out_file, AVIO_FLAG_READ);
+	ffmpeg.av_strerror(ret, error, 500);
+	LOG("download_streaming-->avformat_open_input res=%s...", error);
+	if (ret) {
+		goto fail;
+	}
+	while (download_flag) {
+		uint8_t buf[1024];
+		int n;
+		n = ffmpeg.avio_read(input, buf, sizeof(buf));
+		LOG("download_streaming-->read %d byte...", n);
+		if (n <= 0)
+			break;
+		ffmpeg.avio_write(output, buf, n);
+		ffmpeg.avio_flush(output);
+	}
+
+	ffmpeg.avio_flush(output);
+
+	fail: ffmpeg.avio_close(input);
+}
+
 int saving_network_media(const char *in_filename, const char *out_filename,
 		int64_t *pts_ptr, int64_t skip_bytes) { //int64_t pts_array[]//
 	int fff = 0;
@@ -185,8 +254,8 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 	ffmpeg.av_register_all();
 	ffmpeg.avformat_network_init();
 
-	if (skip_bytes)
-		get_pts_of_streams(out_filename, pts_ptr);
+//	if (skip_bytes)
+//		get_pts_of_streams(out_filename, pts_ptr);
 
 	if ((ret = ffmpeg.avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0) {
 		ffmpeg.av_strerror(ret, error, 500);
@@ -222,25 +291,24 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 
 	LOG("download_streaming-->before for");
 
+	int64_t seek_time_int64t;
+	int stream_index;
 	for (i = 0; i < ifmt_ctx->nb_streams; i++) {
-//		if (pts_array){
-//			LOG("download_streaming-->pts_array is not null");
-//			int64_t last_pts = pts_array[i];
-//			LOG("download_streaming-->seek out file's stream=%d&&&pts=%lld...",i,last_pts);
-////		    ffmpeg.avformat_seek_file(ifmt_ctx,i,last_pts,last_pts,last_pts,AVSEEK_FLAG_ANY);
-//		    ffmpeg.avio_skip(ifmt_ctx->pb,skip_bytes);
-////		    ffmpeg.avio_seek_time(ifmt_ctx->pb,i,pts_array[i],AVSEEK_FLAG_ANY);
-//			LOG("download_streaming-->seek out successed");
-//		}
 		AVStream *in_stream = ifmt_ctx->streams[i];
+		int neen_seek = 0;
 		if (pts_ptr) {
-			int64_t seek_time_int64t = pts_ptr[i];
-			int seek_res = -1;
-			if (seek_time_int64t > 0)
-				seek_res = ffmpeg.avformat_seek_file(ifmt_ctx, i, INT64_MIN,
-						seek_time_int64t, INT64_MAX,
-						AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_ANY); //
-			LOG("download_streaming-->seek stream+++seek_time=%lld+++seek_res=%d", seek_time_int64t, seek_res);
+			LOG("download_streaming-->seek stream+++seek_time=%lld", seek_time_int64t);
+			if (seek_time_int64t < pts_ptr[i]) {
+				neen_seek = 1;
+				seek_time_int64t = pts_ptr[i];
+				stream_index = i;
+				int seek_res = -1;
+				if (seek_time_int64t > 0) {
+					seek_res = ffmpeg.avformat_seek_file(ifmt_ctx, i, INT64_MIN,
+							seek_time_int64t, INT64_MAX, AVSEEK_FLAG_BACKWARD); //| AVSEEK_FLAG_ANY
+				}
+				LOG("download_streaming-->seek stream+++seek_time=%lld+++seek_res=%d", seek_time_int64t, seek_res);
+			}
 		}
 		AVStream *out_stream = ffmpeg.avformat_new_stream(ofmt_ctx,
 				in_stream->codec->codec);
@@ -259,40 +327,50 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 		out_stream->codec->codec_tag = 0;
 		if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 			out_stream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+
 	}
+	LOG("download_streaming-->after for");
+
 	ffmpeg.av_dump_format(ofmt_ctx, 0, out_filename, 1);
 
+	LOG("download_streaming-->before avio_open");
 	if (!(ofmt->flags & AVFMT_NOFILE)) {
-//		ret = ffmpeg.avio_open(&ofmt_ctx->pb, out_filename, AVIO_FLAG_WRITE);
-		ret = ffmpeg.avio_open2(&ofmt_ctx->pb, out_filename, AVIO_FLAG_WRITE,
-				NULL, NULL);
+		ret = ffmpeg.avio_open(&ofmt_ctx->pb, out_filename, AVIO_FLAG_WRITE);
 		if (ret < 0) {
 			fprintf(stderr, "Could not open output file '%s'", out_filename);
 			goto end;
 		}
-//		if (pts_array) {
-//			for (i = 0; i < ofmt_ctx->nb_streams; i++) {
-//				ffmpeg.avio_seek_time(ofmt_ctx->pb, i, pts_array[i],
-//						AVSEEK_FLAG_ANY);
-//			}
-//		}
-
-//		if (skip_bytes > 0) {
-//			ffmpeg.avio_skip(ofmt_ctx->pb, skip_bytes);
-//			LOG("download_streaming-->avio_skip position=%lld...ofmt_ctx->pb->pos=%lld", skip_bytes, ofmt_ctx->pb->pos);
-//		}
-
 	}
+	LOG("download_streaming-->after avio_open");
 
 	if (skip_bytes <= 0) //pts_array
 		ret = ffmpeg.avformat_write_header(ofmt_ctx, NULL);
+	LOG("download_streaming-->ofmt_ctx->pb->pos=%lld", ofmt_ctx->pb->pos);
 	if (ret < 0) {
 		fprintf(stderr, "Error occurred when opening output file\n");
 		goto end;
 	}
 
-	LOG("download_streaming-->before while");
-	while (download_flag) {
+//	if (skip_bytes > ofmt_ctx->pb->pos) {
+//		ffmpeg.avio_skip(ofmt_ctx->pb, skip_bytes - ofmt_ctx->pb->pos);
+////		ffmpeg.avio_seek_time(ofmt_ctx->pb, seek_time_int64t, stream_index,
+////				AVSEEK_FLAG_BACKWARD);
+//		LOG("download_streaming-->avio_skip position=%lld...ofmt_ctx->pb->pos=%lld", skip_bytes, ofmt_ctx->pb->pos);
+//	}
+
+//	if (seek_time_int64t > 0)
+//		ffmpeg.avformat_seek_file(ofmt_ctx, stream_index, INT64_MIN,
+//				seek_time_int64t, INT64_MAX, AVSEEK_FLAG_BACKWARD);
+	if (skip_bytes > 0) {
+		LOG("download_streaming-->skip_bytes=%lld,start rewrite_exist_file...", skip_bytes);
+		write_existed(out_filename, ofmt_ctx);
+	}
+	LOG("download_streaming-->before while...");
+	int flag_complete_second = 0;
+	while (1) {
+		if (!download_flag && flag_complete_second)
+			break;
+		flag_complete_second = 0;
 		if (download_flag == FLAG_DOWNLOAD_PAUSE) {
 			pthread_mutex_lock(download_mutex);
 			LOG("download_streaming-->pause download");
@@ -307,9 +385,6 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 			LOG("download_streaming-->while -- ret=%d...", ret);
 			break;
 		}
-
-		if (pts_ptr && pkt.pts <= pts_ptr[pkt.stream_index])
-			continue;
 
 		in_stream = ifmt_ctx->streams[pkt.stream_index];
 		out_stream = ofmt_ctx->streams[pkt.stream_index];
@@ -331,14 +406,23 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 					AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX);
 			pkt.duration = ffmpeg.av_rescale_q(pkt.duration,
 					in_stream->time_base, out_stream->time_base);
-			pkt.pos = -1;
+//			pkt.pos = -1;
+
+			if (pts_ptr && pkt.dts <= pts_ptr[pkt.stream_index])
+				continue;
+
 			log_packet(ofmt_ctx, &pkt, "out");
 
-			pts_array[pkt.stream_index] = pkt.pts;
-			LOG("download_streaming-->while -- pts=%lld...stream_index=%d...ofmt_ctx->pb->pos=%lld", pkt.pts, pkt.stream_index, ofmt_ctx->pb->pos);
+			pts_array[pkt.stream_index] = pkt.dts;
+//			LOG("download_streaming-->while -- dts=%lld...stream_index=%d...ofmt_ctx->pb->pos=%lld", pkt.dts, pkt.stream_index, ofmt_ctx->pb->pos);
 			ret = ffmpeg.av_interleaved_write_frame(ofmt_ctx, &pkt);
 			if (current > current_time_downloaded_to) {
-//				ffmpeg.av_usleep(50 * 1000);
+				if (ofmt_ctx->pb->pos < pkt.pos) {
+					LOG("download_streaming-->sleep................");
+					ffmpeg.av_usleep(50 * 1000);
+					LOG("download_streaming-->after sleep ................");
+				}
+				flag_complete_second = 1;
 				java_callback_onDownloadProgressChanged(ofmt_ctx->pb->pos,
 						pts_array, ifmt_ctx->nb_streams, current);
 				current_time_downloaded_to = current;

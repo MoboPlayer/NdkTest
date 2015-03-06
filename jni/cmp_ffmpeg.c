@@ -263,6 +263,12 @@ int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_
 	ffmpeg_func_p->avio_flush = dlsym(handle, "avio_flush");
 	FF_FUNC_CHECK(ffmpeg_func_p->avio_flush);
 
+	ffmpeg_func_p->av_usleep = dlsym(handle, "av_usleep");
+	FF_FUNC_CHECK(ffmpeg_func_p->av_usleep);
+
+	ffmpeg_func_p->avio_read = dlsym(handle, "avio_read");
+	FF_FUNC_CHECK(ffmpeg_func_p->avio_read);
+
 	ffmpeg_func_p->avio_write = dlsym(handle, "avio_write");
 	FF_FUNC_CHECK(ffmpeg_func_p->avio_write);
 

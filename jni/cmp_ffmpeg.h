@@ -173,7 +173,10 @@ typedef struct ffmpeg_func_t {
 	AVFormatContext* (*avformat_alloc_context)(void);
 	void (*avio_flush)(AVIOContext *s);
 
-	void (*avio_write)(AVIOContext * s, const unsigned char * buf, int size);
+	int (*av_usleep)(unsigned usec);
+
+	int (*avio_read)(AVIOContext *s, unsigned char *buf, int size);
+	void (*avio_write)(AVIOContext *s, const unsigned char *buf, int size);
 
 } ffmpeg_func_t;
 

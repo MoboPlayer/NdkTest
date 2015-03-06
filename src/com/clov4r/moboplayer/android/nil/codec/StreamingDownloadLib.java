@@ -1,5 +1,7 @@
 package com.clov4r.moboplayer.android.nil.codec;
 
+import java.util.Iterator;
+
 import android.os.AsyncTask;
 
 import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadManager.MoboDownloadListener;
@@ -71,7 +73,7 @@ public class StreamingDownloadLib {
 			mMoboDownloadListener.onDownloadProgressChanged(downloadData,
 					currentTime);
 	}
-
+	
 	public void onDownloadFinished() {
 		downloadData.status = StreamingDownloadData.download_status_finished;
 		if (mMoboDownloadListener != null)

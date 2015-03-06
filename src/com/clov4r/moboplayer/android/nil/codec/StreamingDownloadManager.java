@@ -277,17 +277,18 @@ public class StreamingDownloadManager {
 		public int status = download_status_stoped;
 		public String failedMsg = null;
 		/** 视频中每个stream与pts的对应关系 **/
-		HashMap<Integer,Long> stm_index_pts_map = new HashMap<Integer,Long>();
+		HashMap<Integer, Long> stm_index_pts_map = new HashMap<Integer, Long>();
 
 		long[] getPtsArray() {
-//			stm_index_pts_map.put(0, 7040l);
-//			stm_index_pts_map.put(1, 6919l);
+			// stm_index_pts_map.put(0, 7040l);
+			// stm_index_pts_map.put(1, 6919l);
 			if (stm_index_pts_map.size() == 0)
 				return null;
 			else {
 				long[] resArray = new long[stm_index_pts_map.size()];
 				for (int i = 0; i < stm_index_pts_map.size(); i++)
-					resArray[i] = stm_index_pts_map.get(i);
+					if (stm_index_pts_map.containsKey(i))
+						resArray[i] = stm_index_pts_map.get(i);
 				return resArray;
 			}
 		}

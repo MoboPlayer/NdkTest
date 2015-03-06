@@ -53,6 +53,9 @@ void des_mutex_cond();
 int saving_network_media(const char *in_filename, const char *out_filename,
 		int64_t *pts_ptr, int64_t skip_bytes);
 
+//int saving_network_media_2(const char *in_filename, const char *out_filename,
+//		int64_t *pts_ptr, int64_t skip_bytes);
+
 void set_download_flag(int flag);
 
 int get_duration();
