@@ -120,55 +120,6 @@ void des_mutex_cond() {
 	}
 }
 
-static int get_pts_of_streams(char* file_path, int64_t *pts_ptr) {
-	int ret;
-	AVFormatContext *fmt_ctx = NULL;
-	int i;
-
-	LOG("download_streaming-->get_pts_of_streams--%s...", file_path);
-	if ((ret = ffmpeg.avformat_open_input(&fmt_ctx, file_path, 0, 0)) < 0) {
-		fprintf(stderr, "Could not open source file %s\n", file_path);
-		char error[500];
-		ffmpeg.av_strerror(ret, error, 500);
-		LOG("download_streaming-->avformat_open_input--%s...", error);
-		return -1;
-	}
-
-	/* retrieve stream information */
-	if ((ret = ffmpeg.avformat_find_stream_info(fmt_ctx, NULL)) < 0) {
-		fprintf(stderr, "Could not find stream information\n");
-		char error[500];
-		ffmpeg.av_strerror(ret, error, 500);
-		LOG("download_streaming-->avformat_find_stream_info--%s...", error);
-		return -2;
-	}
-
-	for (i = 0; i < fmt_ctx->nb_streams; i++) {
-//		pts_ptr[i] = fmt_ctx->streams[i];
-		LOG("download_streaming-->stream pts=%lld...", fmt_ctx->streams[i]->last_IP_pts);
-		ffmpeg.avformat_seek_file(fmt_ctx, i, INT64_MIN, pts_ptr[i], INT64_MAX,
-				AVSEEK_FLAG_BACKWARD); // | AVSEEK_FLAG_ANY///fmt_ctx->streams[i]->last_IP_pts
-		int64_t last_pts = 0;
-		AVPacket pkt;
-		int ret;
-		while (1) {
-			ret = ffmpeg.av_read_frame(fmt_ctx, &pkt);
-			if (ret < 0) {
-				LOG("download_streaming-->get_pts_of_streams-->while -- ret=%d...", ret);
-				break;
-			}
-			last_pts = pkt.pts;
-			pts_ptr[i] = last_pts;
-			ffmpeg.av_free_packet(&pkt);
-		}
-		LOG("download_streaming-->stream last pts=%lld...", last_pts);
-	}
-
-	ffmpeg.avformat_close_input(&fmt_ctx);
-	fmt_ctx = NULL;
-	return ret;
-}
-
 static int64_t get_file_size(char *input_url) {
 	AVIOContext *input;
 	int res = avio_open2(&input, input_url, AVIO_FLAG_READ, NULL, NULL);
@@ -177,12 +128,24 @@ static int64_t get_file_size(char *input_url) {
 	return avio_size(input);
 }
 
+char* str_join(char *s1, char *s2)
+{
+    char *result = malloc(strlen(s1)+strlen(s2)+1);
+    if (result == NULL) exit (1);
+
+    strcpy(result, s1);
+    strcat(result, s2);
+
+    return result;
+}
 static void rewrite_exist_file(char *out_file, AVFormatContext *ofmt_ctx) {
 	AVFormatContext *ifmt_ctx_exist = NULL;
 	AVPacket pkt;
 	char error[500];
 	int ret;
-	if ((ret = ffmpeg.avformat_open_input(&ifmt_ctx_exist, out_file, 0, 0))
+	char tmp[5]=".tmp";
+	char *in_file_tmp=str_join(out_file,tmp);
+	if ((ret = ffmpeg.avformat_open_input(&ifmt_ctx_exist, in_file_tmp, 0, 0))
 			< 0) {
 		ffmpeg.av_strerror(ret, error, 500);
 		LOG("download_streaming-->avformat_open_input res=%s...", error);
@@ -198,44 +161,19 @@ static void rewrite_exist_file(char *out_file, AVFormatContext *ofmt_ctx) {
 
 	LOG("download_streaming-->avformat_open_input after");
 	ffmpeg.av_dump_format(ifmt_ctx_exist, 0, out_file, 0);
-
+	ffmpeg.avformat_write_header(ofmt_ctx, NULL);
 	while (download_flag) {
 		ret = ffmpeg.av_read_frame(ifmt_ctx_exist, &pkt);
 		if (ret < 0) {
 			LOG("download_streaming-->while -- ret=%d...", ret);
 			break;
 		}
+		LOG("download_streaming-->while -- has read exist file");
 		ret = ffmpeg.av_interleaved_write_frame(ofmt_ctx, &pkt);
 		ffmpeg.av_free_packet(&pkt);
 	}
 	end: ffmpeg.avformat_close_input(&ifmt_ctx_exist);
-}
-
-static void write_existed(char *out_file, AVFormatContext *ofmt_ctx) {
-	AVIOContext *input, *output = ofmt_ctx->pb;
-	int ret;
-	char error[500];
-
-	ret = ffmpeg.avio_open(&input, out_file, AVIO_FLAG_READ);
-	ffmpeg.av_strerror(ret, error, 500);
-	LOG("download_streaming-->avformat_open_input res=%s...", error);
-	if (ret) {
-		goto fail;
-	}
-	while (download_flag) {
-		uint8_t buf[1024];
-		int n;
-		n = ffmpeg.avio_read(input, buf, sizeof(buf));
-		LOG("download_streaming-->read %d byte...", n);
-		if (n <= 0)
-			break;
-		ffmpeg.avio_write(output, buf, n);
-		ffmpeg.avio_flush(output);
-	}
-
-	ffmpeg.avio_flush(output);
-
-	fail: ffmpeg.avio_close(input);
+	java_callback_onRewriteFinished();
 }
 
 int saving_network_media(const char *in_filename, const char *out_filename,
@@ -254,9 +192,6 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 	ffmpeg.av_register_all();
 	ffmpeg.avformat_network_init();
 
-//	if (skip_bytes)
-//		get_pts_of_streams(out_filename, pts_ptr);
-
 	if ((ret = ffmpeg.avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0) {
 		ffmpeg.av_strerror(ret, error, 500);
 		LOG("download_streaming-->avformat_open_input res=%s...", error);
@@ -270,7 +205,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 		goto end;
 	}
 
-	LOG("download_streaming-->avformat_open_input after");
+	LOG("download_streaming-->avformat_open_input after.");
 	ffmpeg.av_dump_format(ifmt_ctx, 0, in_filename, 0);
 
 	streaming_duration = ifmt_ctx->duration / AV_TIME_BASE;
@@ -282,7 +217,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 //	LOG("download_streaming-->after avformat_alloc_output_context2...%s",error);
 	if (!ofmt_ctx) {
 		fprintf(stderr, "Could not create output context\n");
-		ret = AVERROR_UNKNOWN;
+//		ret = AVERROR_UNKNOWN;
 		LOG("download_streaming-->Could not create output context res=%s...", error);
 		goto end;
 	}
@@ -363,7 +298,8 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 //				seek_time_int64t, INT64_MAX, AVSEEK_FLAG_BACKWARD);
 	if (skip_bytes > 0) {
 		LOG("download_streaming-->skip_bytes=%lld,start rewrite_exist_file...", skip_bytes);
-		write_existed(out_filename, ofmt_ctx);
+//		write_existed(out_filename, ofmt_ctx);
+		rewrite_exist_file(out_filename, ofmt_ctx);
 	}
 	LOG("download_streaming-->before while...");
 	int flag_complete_second = 0;
@@ -395,6 +331,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 		} else {
 			current = ffmpeg.av_rescale_q(pkt.pts, out_stream->time_base,
 					AV_TIME_BASE_Q) / AV_TIME_BASE;
+//			current = ffmpeg.av_gettime() / 1000;
 			if (pts_ptr && start_downloaded_time == -1)
 				start_downloaded_time = current;
 			/* copy packet */
@@ -414,7 +351,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 			log_packet(ofmt_ctx, &pkt, "out");
 
 			pts_array[pkt.stream_index] = pkt.dts;
-//			LOG("download_streaming-->while -- dts=%lld...stream_index=%d...ofmt_ctx->pb->pos=%lld", pkt.dts, pkt.stream_index, ofmt_ctx->pb->pos);
+			LOG("download_streaming-->while -- dts=%lld...stream_index=%d...pts=%lld...current=%d", pkt.dts, pkt.stream_index, pkt.pts,current);
 			ret = ffmpeg.av_interleaved_write_frame(ofmt_ctx, &pkt);
 			if (current > current_time_downloaded_to) {
 				if (ofmt_ctx->pb->pos < pkt.pos) {
@@ -495,7 +432,7 @@ int get_start_downloaded_time() {
 
 static void java_callback_onDownloadProgressChanged(int64_t pos,
 		int64_t pts_array[], int stream_num, int current_time) {
-	LOG("download_streaming-->onDownloadProgressChanged -- current_time=%d...", current_time);
+//	LOG("download_streaming-->onDownloadProgressChanged -- current_time=%d...", current_time);
 	JNIEnv *env;
 	jclass cls;
 	jmethodID mid;
@@ -576,3 +513,27 @@ static void java_callback_onDownloadFailed(char* msg) {
 	error: JniThreadDetach(_needDetach);
 }
 
+
+static void java_callback_onRewriteFinished() {
+	JNIEnv *env;
+	jclass cls;
+	jmethodID mid;
+
+	int _needDetach = 0;
+	int attachStatus = ATTACH_ERROR;
+
+	attachStatus = JniThreadAttach(&_needDetach, &env);
+	if (attachStatus == ATTACH_ERROR) {
+		return ATTACH_ERROR;
+	}
+
+	cls = (*env)->GetObjectClass(env, java_object);
+	if (cls == NULL)
+		goto error;
+	mid = (*env)->GetMethodID(env, cls, "onRewriteFinished", "()V");
+	if (mid == NULL)
+		goto error;
+	(*env)->CallVoidMethod(env, java_object, mid);
+
+	error: JniThreadDetach(_needDetach);
+}

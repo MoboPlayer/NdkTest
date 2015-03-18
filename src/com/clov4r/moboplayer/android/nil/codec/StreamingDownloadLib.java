@@ -1,8 +1,9 @@
 package com.clov4r.moboplayer.android.nil.codec;
 
-import java.util.Iterator;
+import java.io.File;
 
 import android.os.AsyncTask;
+import android.util.Log;
 
 import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadManager.MoboDownloadListener;
 import com.clov4r.moboplayer.android.nil.codec.StreamingDownloadManager.StreamingDownloadData;
@@ -73,7 +74,12 @@ public class StreamingDownloadLib {
 			mMoboDownloadListener.onDownloadProgressChanged(downloadData,
 					currentTime);
 	}
-	
+
+	public void onRewriteFinished() {
+		File file = new File(downloadData.fileSavePath + ".tmp");
+		boolean deleted=file.delete();
+	}
+
 	public void onDownloadFinished() {
 		downloadData.status = StreamingDownloadData.download_status_finished;
 		if (mMoboDownloadListener != null)
@@ -152,6 +158,13 @@ public class StreamingDownloadLib {
 		@Override
 		protected Void doInBackground(Void... params) {
 			// TODO Auto-generated method stub
+			if (mStreamingDownloadData.finishSize > 0) {
+				File file = new File(mStreamingDownloadData.fileSavePath);
+				if (file.exists()) {
+					file.renameTo(new File(mStreamingDownloadData.fileSavePath
+							+ ".tmp"));
+				}
+			}
 			mStreamingDownloadData.status = StreamingDownloadData.download_status_started;
 			nativeStartDownload(mStreamingDownloadData.streamingUrl,
 					mStreamingDownloadData.fileSavePath,

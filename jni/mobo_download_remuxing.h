@@ -70,4 +70,6 @@ static void java_callback_onDownloadFinished();
 
 static void java_callback_onDownloadFailed();
 
+static void java_callback_onRewriteFinished();
+
 #endif
