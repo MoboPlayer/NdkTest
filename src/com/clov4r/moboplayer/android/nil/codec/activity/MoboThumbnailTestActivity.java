@@ -41,10 +41,10 @@ import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni.OnBitmapCreatedL
 public class MoboThumbnailTestActivity extends Activity {
 	// final String videoName =
 	// Environment.getExternalStorageDirectory()+"/dy/ppkard.mp4";
-	 final String videoName ="rtsp://184.72.239.149/vod/mp4:BigBuckBunny_115k.mov";
+	 final String videoName ="/sdcard/Movies/Frozen.2013.3D.BluRay.HSBS.1080p.DTS.x264-CHD3D.mkv";
 	 //Environment.getExternalStorageDirectory()+"/Movies/[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv";//蒙羞之旅BD中英双字.rmvb
 //	final String videoName = "/sdcard/Movies/播放失败导致mobo重启.m2ts";// /sdcard/Movies/01010020_0006.MP4
-	 ///sdcard/mobo_download_test.mkv
+	 //rtsp://184.72.239.149/vod/mp4:BigBuckBunny_115k.mov
 
 	final String img_save_path = Environment.getExternalStorageDirectory()
 			+ "/mobo_screen_shot_%d.png";
