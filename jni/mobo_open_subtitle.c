@@ -64,6 +64,7 @@ static int open_codec_context(sub_data_p sub_p, int index,
 	sub_p->stream = st;
 	sub_p->dec_ctx = dec_ctx;
 
+	LOG("open_codec_context-->dec_ctx->codec_id = %d", dec_ctx->codec_id);
 	/* find decoder for the stream */
 	dec = ffmpeg.avcodec_find_decoder(dec_ctx->codec_id);
 	if (!dec) {
@@ -130,21 +131,46 @@ int binary_search(AVSubtitle *a, int key, int n) {
 	return -1;
 }
 
+static void release_sub(sub_data_p sub_p){
+    if (sub_p->sub_mutex) {
+        pthread_mutex_destroy(sub_p->sub_mutex);
+        free(sub_p->sub_mutex);
+        sub_p->sub_mutex = NULL;
+    }
+	if(sub_p)
+	    ffmpeg.av_freep(sub_p);
+	sub_p = NULL;
+}
+
 void close_subtitle(int subtiltle_index) {
-	if (g_sub_p[subtiltle_index]) {
+	LOG("close_subtitle...");
+	sub_data_p sub_p = g_sub_p[subtiltle_index];
+	if (sub_p && !sub_p->has_closed) {
+		if(sub_p->sub_mutex)
+		    pthread_mutex_lock(sub_p->sub_mutex);
+		sub_p->has_closed = 1;
+//		usleep(30000);
 		int i; // error: 'for' loop initial declarations are only allowed in C99 or C11 mode
-		for (i = 0; i < g_sub_p[subtiltle_index]->subtitle_size; i++) {
-			AVSubtitle *sp = &(g_sub_p[subtiltle_index]->subtitles_array[i]);
+		for (i = 0; i < sub_p->subtitle_size; i++) {
+			AVSubtitle *sp = &(sub_p->subtitles_array[i]);
 			ffmpeg.avsubtitle_free(sp);
 		}
-		ffmpeg.av_freep(g_sub_p[subtiltle_index]);
+
+		if(sub_p->sub_mutex)
+			pthread_mutex_unlock(sub_p->sub_mutex);
+		if(!sub_p->is_decoding)
+			release_sub(sub_p);
 	}
+	LOG("close_subtitle...end");
 }
 
 char *get_subtitle_ontime(int cur_time, int subtiltle_index) {
-	if (!g_sub_p[subtiltle_index]) {
+//	LOG("get_subtitle_ontime---start");
+
+	if (!g_sub_p[subtiltle_index] || g_sub_p[subtiltle_index]->has_closed) {
 		return NULL;
 	}
+	g_sub_p[subtiltle_index]->is_seaching = 1;
 	int array_index = -1;
 //    array_index = cur_time;
 	char *subtitle_text = NULL;
@@ -166,13 +192,15 @@ char *get_subtitle_ontime(int cur_time, int subtiltle_index) {
 			subtitle_text = sj_get_raw_text_from_ssa(ffregion->ass);
 		}
 	}
+	g_sub_p[subtiltle_index]->is_seaching = 0;
+//	LOG("get_subtitle_ontime---end");
 	return subtitle_text;
 }
 
 /**字幕文件的seekfile不准，暂时从跳转时间之前5秒开始读包并判断**/
 #define TIME_PRE_ADJUSTMENT 5000
 #define SEEK_FORWARD_PACKET_NUM 50
-char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff) {
+char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff, AVSubtitleRect *sub_rect) {
 	if (!g_sub_p[subtiltle_index]) {
 		return NULL;
 	}
@@ -182,7 +210,6 @@ char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff) {
 	AVPacket packet;
 //	AVSubtitle sub = NULL;
 //	ffmpeg.av_malloc(sizeof(AVSubtitle));
-
 	AVSubtitle *subtitle = ffmpeg.av_malloc(sizeof(*subtitle));
 	sub_data_p sub_data = g_sub_p[subtiltle_index];
 	ffmpeg.av_init_packet(&packet);
@@ -214,7 +241,7 @@ char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff) {
 		return NULL;
 
 	int got_frame = 0;
-	while (!got_frame && ffmpeg.av_read_frame(sub_data->fmt_ctx, &packet) >= 0) {
+	while (sub_data->has_closed != 1 && !got_frame && ffmpeg.av_read_frame(sub_data->fmt_ctx, &packet) >= 0) {
 		if (packet.stream_index == sub_data->stream->index) {
 			ret = ffmpeg.avcodec_decode_subtitle2(sub_data->dec_ctx, subtitle,
 					&got_frame, &packet);
@@ -231,18 +258,25 @@ char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff) {
 						- time_diff;
 				int end_time = subtitle->end_display_time + pts2time
 						+ time_diff;
-				LOG("open_subtitle-->cur_time=%d,start_display_time=%d,end_display_time=%d", cur_time, start_time, end_time);
+				LOG("open_subtitle-->cur_time=%d,start_display_time=%d,end_display_time=%d,subtitle->num_rects=%d", cur_time, start_time, end_time,subtitle->num_rects);
 				if (cur_time >= start_time && cur_time <= end_time) {
 					if (subtitle->num_rects) {
 						AVSubtitleRect *ffregion = subtitle->rects[0];
+						if(sub_rect != NULL)
+						    *sub_rect = *(subtitle->rects[0]);
 						if (ffregion) {
 							if (ffregion->type == SUBTITLE_TEXT) {
+								LOG("open_subtitle-->ffregion->type == SUBTITLE_TEXT");
 								subtitle_text = ffregion->text;
 							} else if (ffregion->type == SUBTITLE_ASS) {
+								LOG("open_subtitle-->ffregion->type == SUBTITLE_ASS");
 								subtitle_text = sj_get_raw_text_from_ssa(
 										ffregion->ass);
+							} else if(ffregion->type == SUBTITLE_BITMAP){
+								LOG("open_subtitle-->ffregion->type == SUBTITLE_BITMAP,ffregion->w=%d,ffregion->h=%d,ffregion->pict=%p",ffregion->w,ffregion->h,&(ffregion->pict));
+//								*sub_rect = *ffregion;
 							}
-							LOG("open_subtitle-->%s", subtitle_text);
+							LOG("open_subtitle-->%s,ffregion->type=%d", subtitle_text,ffregion->type);
 						}
 					}
 					break;
@@ -265,7 +299,7 @@ void get_rescale_time(int cur_time, int64_t *res_time, sub_data_p sub_data) {
 			sub_data->stream->time_base);
 }
 
-int subtitle_read_decode(sub_data_p sub_p) {
+int subtitle_read_decode(sub_data_p sub_p, int open_type) {//open_type: 1,加载全部字幕；2：即时加载，只加载一个，用于获取字幕类型
 	int ret = 0;
 	int got_frame = 0;
 
@@ -283,7 +317,19 @@ int subtitle_read_decode(sub_data_p sub_p) {
 		return -1;
 	}
 
-	while (ffmpeg.av_read_frame(sub_p->fmt_ctx, &pkt) >= 0) {
+	int is_locked = 0;
+	while (sub_p) {//ffmpeg.av_read_frame(sub_p->fmt_ctx, &pkt) >= 0
+//		LOG("subtitle_read_decode---start");
+		pthread_mutex_lock(sub_p->sub_mutex);
+		is_locked = 1;
+		if(sub_p->has_closed){
+			LOG("subtitle_read_decode---has_closed..");
+			break;
+		}
+		if(ffmpeg.av_read_frame(sub_p->fmt_ctx, &pkt) < 0){
+			LOG("subtitle_read_decode---av_read_frame < 0..");
+			break;
+		}
 		if (pkt.stream_index == sub_p->stream->index) {
 			if (sub_p->subtitle_index >= sub_p->subtitle_size) {
 				sub_p->subtitle_size *= 2;
@@ -292,7 +338,7 @@ int subtitle_read_decode(sub_data_p sub_p) {
 						sub_p->subtitle_size * sizeof(AVSubtitle));
 				if (!temp_p) {
 					ffmpeg.av_freep(sub_p->subtitles_array);
-					return -2;
+					ret = -2;//return -2;
 				} else {
 					sub_p->subtitles_array = temp_p;
 				}
@@ -304,17 +350,28 @@ int subtitle_read_decode(sub_data_p sub_p) {
 					&got_frame, &pkt);
 			if (ret < 0) {
 				ffmpeg.av_freep(sub_p->subtitles_array);
-				return ret;
+				break;//return ret;
 			}
+
+			ffmpeg.av_free_packet(&pkt);
 
 			if (got_frame) {
 				sub_p->subtitle_index++;
 				fprintf(stderr, "got subtitle\n");
+				if(open_type == 2)
+					break;
 			}
 
-			ffmpeg.av_free_packet(&pkt);
 		}
+		pthread_mutex_unlock(sub_p->sub_mutex);
+		is_locked = 0;
+//		LOG("subtitle_read_decode---end");
 	}
+	if(is_locked)
+	    pthread_mutex_unlock(sub_p->sub_mutex);
+	LOG("subtitle_read_decode---read end..");
+	if(sub_p)
+	    sub_p->is_decoding = 0;
 	return ret;
 }
 
@@ -323,6 +380,11 @@ int open_subtitle(const char *file, int stream_index, int subtiltle_index) {
 	int ret = 0;
 	g_sub_p[subtiltle_index] = ffmpeg.av_mallocz(sizeof(SubtitleData));
 	sub_data_p sub_p = g_sub_p[subtiltle_index];
+	sub_p->sub_mutex =  (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
+    memset(sub_p->sub_mutex, 0, sizeof(pthread_mutex_t));
+    pthread_mutex_init(sub_p->sub_mutex, NULL);
+	sub_p->has_closed = 0;
+	sub_p->is_decoding = 1;
 
 	ffmpeg.av_register_all();
 
@@ -345,13 +407,22 @@ int open_subtitle(const char *file, int stream_index, int subtiltle_index) {
 		return ret;
 	}
 
-	ret = subtitle_read_decode(sub_p);
+	ret = subtitle_read_decode(sub_p, 1);
 
-	ffmpeg.avcodec_close(sub_p->dec_ctx);
-	ffmpeg.avformat_close_input(&sub_p->fmt_ctx);
+
+	if(sub_p){
+	    ffmpeg.avcodec_close(sub_p->dec_ctx);
+	    ffmpeg.avformat_close_input(&sub_p->fmt_ctx);
+
+	}
+
 	if (ret < 0) {
 		ffmpeg.av_freep(g_sub_p[subtiltle_index]);
 	}
+
+	if(!sub_p->has_closed)
+		release_sub(sub_p);
+	sub_p->is_decoding = 0;
 	return ret;
 }
 
@@ -360,6 +431,7 @@ int open_subtitle_2(const char *file, int stream_index, int subtiltle_index) {
 	int ret = 0;
 	g_sub_p[subtiltle_index] = ffmpeg.av_mallocz(sizeof(SubtitleData));
 	sub_data_p sub_p = g_sub_p[subtiltle_index];
+	sub_p->has_closed = 0;
 
 	ffmpeg.av_register_all();
 
@@ -382,11 +454,14 @@ int open_subtitle_2(const char *file, int stream_index, int subtiltle_index) {
 		return ret;
 	}
 
+	subtitle_read_decode(sub_p, 2);
+
 	return ret;
 }
 
 void close_subtitle_2(int subtiltle_index) {
 	sub_data_p sub_p = g_sub_p[subtiltle_index];
+	sub_p->has_closed = 1;
 	ffmpeg.avcodec_close(sub_p->dec_ctx);
 	ffmpeg.avformat_close_input(&sub_p->fmt_ctx);
 	ffmpeg.av_freep(sub_p);

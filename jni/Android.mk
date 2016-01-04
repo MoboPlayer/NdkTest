@@ -20,18 +20,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+ARCH_ABI := $(TARGET_ARCH_ABI)
 LOCAL_PATH := $(call my-dir)
- include $(CLEAR_VARS)
- LOCAL_MODULE := myffmpegv7
- LOCAL_SRC_FILES := ffmpeg/libffmpeg_armv7_neon.so
+
+include $(CLEAR_VARS)
+ LOCAL_MODULE := mypng
+ LOCAL_SRC_FILES := ffmpeg/$(ARCH_ABI)/libpng.so
  LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include  
- include $(PREBUILT_SHARED_LIBRARY)
- 
+include $(PREBUILT_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+ LOCAL_MODULE := myffmpegv7
+ LOCAL_SRC_FILES := ffmpeg/$(ARCH_ABI)/libffmpeg.so
+ LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include  
+include $(PREBUILT_SHARED_LIBRARY)
+
 include $(CLEAR_VARS)
 LOCAL_MODULE    := mobo_jni_util
 LOCAL_C_INCLUDES:= F:\MoboPlayer\codec\ffmpeg\FFmpeg-master
-LOCAL_SRC_FILES := mobo_subtitle_jni.c cmp_ffmpeg.c mobo_open_subtitle.c mobo_thumbnail_jni.c mobo_thumbnail.c mobo_load_ffmpeg.c mobo_download_jni.c \
-                   mobo_download_remuxing.c #ffserver.c cmdutil.c ffserver_config.c
+LOCAL_SRC_FILES := mobo_subtitle_jni.c cmp_ffmpeg.c mobo_open_subtitle.c mobo_thumbnail_jni.c mobo_thumbnail.c mobo_load_ffmpeg.c #mobo_download_jni.c \
+                   #mobo_download_remuxing.c ffserver.c cmdutil.c ffserver_config.c
 LOCAL_LDLIBS    := -llog
 LOCAL_CFLAGS := -DNEED_ANDROID_LOG=1
 include $(BUILD_SHARED_LIBRARY)

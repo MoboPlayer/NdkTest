@@ -49,36 +49,50 @@
 package com.clov4r.moboplayer.android.nil.codec.activity;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
+import android.app.Activity;
 import android.content.Intent;
-import android.net.Uri;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Environment;
-import android.support.v7.app.ActionBarActivity;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.clov4r.moboplayer.android.nil.codec.R;
 import com.clov4r.moboplayer.android.nil.codec.SubtitleJni;
 
-public class MainActivity extends ActionBarActivity {
-	final String videoName = Environment.getExternalStorageDirectory()
-			+ "/Movies/[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv";
+public class MainActivity extends Activity implements OnClickListener {
+	// final String videoName = Environment.getExternalStorageDirectory()
+	// +
+	// "/Movies/";
+	// 
+	final String videoName = "/sdcard/movie/roman.mkv";// [老友记].Friends.S01E01.The.One.Where.It.AII.Began.mkv
+	TextView tv = null;
+	ImageView imageView;
+	Button exchange;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		SubtitleJni h = new SubtitleJni();
-		TextView tv = (TextView) this.findViewById(R.id.hello);
+		tv = (TextView) this.findViewById(R.id.hello);
+		imageView = (ImageView) findViewById(R.id.imageView);
+		exchange = (Button) findViewById(R.id.exchange);
+		exchange.setOnClickListener(this);
 		this.getFilesDir().getParent();
 		String libpath = getFilesDir().getParent() + "/lib/";
-		String libname = "libffmpeg_armv7_neon.so";
+		String libname = "libffmpeg.so";// libffmpeg_armv7_neon.so
 		String filePath = Environment.getExternalStorageDirectory()
 				+ "/Movies/output_file_low.mkv";// videoName;Gone.srt//Godzilla.srt//output_file_low.mkv
 
@@ -116,29 +130,77 @@ public class MainActivity extends ActionBarActivity {
 		//
 		// h.closeSubtitle(0);
 
-		// int numOfSubtitle =
-		// SubtitleJni.getInstance().isSubtitleExits(filePath);
-		// if (numOfSubtitle > 0) {
-		// int flag = SubtitleJni.getInstance()
-		// .openSubtitleFile_2(filePath, 0);
-		// // mThread.start();
-		// getSubtitle();
-		// }
+		int numOfSubtitle = SubtitleJni.getInstance()
+				.isSubtitleExits(videoName);
+		if (numOfSubtitle > 0) {
+			int flag = SubtitleJni.getInstance().openSubtitleFile_2(videoName,
+					0);
+			int type = SubtitleJni.getInstance().getSubtitleType(0);
+			Log.e("", ""+type);
+			// mThread.start();
+			// getSubtitle();
+			mThread.start();
+		}
+	}
+
+	public void onDestroy() {
+		super.onDestroy();
 	}
 
 	Thread mThread = new Thread() {
 		@Override
 		public void run() {
-			getSubtitle();
+			// getSubtitle();
+			getTextSubtitle();
 		}
 	};
+
+	public void getTextSubtitle() {
+		int timeBegin = 0;
+		int timeEnd = 3 * 60 * 1000;
+		for (int i = timeBegin; i < timeEnd; i += 1000) {
+			// tv.setText(getSubtitle(i));
+			Log.e("", "" + getSubtitle(i));
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
 
 	public void getSubtitle() {
 		int timeBegin = 0;
 		int timeEnd = 3 * 60 * 1000;
+		int type = SubtitleJni.getInstance().getSubtitleType(0);
+		Log.e("", "" + type);
+		ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1024 * 1024);
 		for (int t = timeBegin; t < timeEnd; t += 1000) {
-			Log.e("testMobo", "150204 - t =" + t + "subtitle = "
-					+ getSubtitle(t));
+			// Log.e("testMobo", "150204 - t =" + t + "subtitle = "
+			// + getSubtitle(t));
+
+			Bitmap bitmap = SubtitleJni.getInstance().getImageSubtitleByTime(t,
+					byteBuffer);
+			if (bitmap != null) {
+				// ImageSpan imgSpan = new ImageSpan(this, bitmap);
+				// SpannableString spanString = new SpannableString("icon");
+				// spanString.setSpan(imgSpan, 0, 4,
+				// Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+				// tv.setText(spanString);
+				// imageView.setImageBitmap(bitmap);
+				Message msg = new Message();
+				msg.obj = bitmap;
+				mHandler.sendMessage(msg);
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				// break;
+			} else
+				imageView.setBackgroundResource(R.drawable.ic_launcher);
 			// try {
 			// sleep(50);
 			// } catch (InterruptedException e) {
@@ -148,6 +210,14 @@ public class MainActivity extends ActionBarActivity {
 		}
 
 	}
+
+	Handler mHandler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			Bitmap bitmap = (Bitmap) msg.obj;
+			imageView.setImageBitmap(bitmap);
+		}
+	};
 
 	protected String getSubtitle(int currentTime) {
 		return SubtitleJni.getInstance().getSubtitleByTime_2(currentTime);
@@ -208,5 +278,16 @@ public class MainActivity extends ActionBarActivity {
 			startActivity(intent);
 		}
 		return super.onOptionsItemSelected(item);
+	}
+
+	int index = 0;
+
+	@Override
+	public void onClick(View v) {
+		// TODO Auto-generated method stub
+		if (exchange == v) {
+
+			SubtitleJni.getInstance().closeSubtitle(0);
+		}
 	}
 }

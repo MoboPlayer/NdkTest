@@ -25,6 +25,8 @@
 #include <jni.h>
 #include "mobo_open_subtitle.h"
 
+void exchange_image_type(AVSubtitleRect *ffregion, void* data_address);
+
 jstring ctojstring(JNIEnv *env, char* tmpstr)
 {
 
@@ -39,7 +41,7 @@ jstring ctojstring(JNIEnv *env, char* tmpstr)
 /* This is a native method
  * open FFmpeg lib and open subtitle file.
  */
-jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileInJNI(
+JNIEXPORT jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileInJNI(
 		JNIEnv* env, jobject thiz, jstring jfile, int stream_index, int subtiltle_index) {
 
 	char *file = (*env)->GetStringUTFChars(env, jfile, 0);
@@ -50,12 +52,12 @@ jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileIn
 
 }
 
-void Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_closeSubtitle(
+JNIEXPORT void Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_closeSubtitle(
 		JNIEnv* env, jobject thiz, int subtiltle_index) {
 	close_subtitle(subtiltle_index);
 
 }
-jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileInJNI2(
+JNIEXPORT jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileInJNI2(
 		JNIEnv* env, jobject thiz, jstring jfile, int stream_index, int subtiltle_index) {
 
 	char *file = (*env)->GetStringUTFChars(env, jfile, 0);
@@ -66,12 +68,12 @@ jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_openSubtitleFileIn
 
 }
 
-void Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_closeSubtitle2(
+JNIEXPORT void Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_closeSubtitle2(
 		JNIEnv* env, jobject thiz, int subtiltle_index) {
 	close_subtitle_2(subtiltle_index);
 
 }
-jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleLanguage(
+JNIEXPORT jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleLanguage(
 		JNIEnv* env, jobject thiz, jstring jfile) {
 
 	char *file = (*env)->GetStringUTFChars(env, jfile, 0);
@@ -83,7 +85,7 @@ jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleLang
 
 }
 
-jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleType(
+JNIEXPORT jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleType(
 		JNIEnv* env, jobject thiz, int subtiltle_index) {
 
 
@@ -96,8 +98,10 @@ jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleType(
 /* This is a native method ,that is get subtitle by time ms.
  *
  */
-jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTime(
+JNIEXPORT jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTime(
 		JNIEnv* env, jobject thiz, int current_time, int subtiltle_index) {
+	if(VERSION_FLAG == 1)
+		return NULL;
 	char *subtitle = get_subtitle_ontime(current_time, subtiltle_index);
 	return (*env)->NewStringUTF(env, subtitle);
 
@@ -105,13 +109,89 @@ jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTi
 /* This is a native method ,that is get subtitle by time ms.
  *
  */
-jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTime2(
+JNIEXPORT jstring Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTime2(
 		JNIEnv* env, jobject thiz, int current_time, int subtiltle_index, int time_diff) {
-	char *subtitle = get_subtitle_ontime_2(current_time, subtiltle_index,time_diff);
+	if(VERSION_FLAG == 1)
+		return NULL;
+	char *subtitle = get_subtitle_ontime_2(current_time, subtiltle_index,time_diff,NULL);
 	return (*env)->NewStringUTF(env, subtitle);
 
 }
-jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_isSubtitleExits(
+
+jobject create_subtitle_bitmap(JNIEnv* env, jobject thiz, jobject bitmap_data, jint width,
+		jint height) {
+	jclass cls = (*env)->GetObjectClass(env, thiz);
+	jmethodID createBitmap = (*env)->GetMethodID(env, cls, "createBitmapOfSubtitle",
+			"(Ljava/nio/ByteBuffer;II)Landroid/graphics/Bitmap;");
+//	(*env)->CallVoidMethod(env, thiz, createBitmap, bitmap_data, size,
+//			video_name);
+	return (*env)->CallObjectMethod(env, thiz, createBitmap, bitmap_data, width,
+			height);
+}
+
+JNIEXPORT jobject Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_getSubtitleByTime3(
+		JNIEnv* env, jobject thiz, int current_time, int subtiltle_index, int time_diff,jobject buffer) {
+	if(VERSION_FLAG == 1)
+		return NULL;
+	AVPicture *av_picture;
+	AVSubtitleRect *sub_rect = NULL;
+	void *b = 0;
+	jobject bitmap_data = NULL;
+	sub_rect = (AVSubtitleRect *) malloc(sizeof(AVSubtitleRect));
+	memset(sub_rect, 0, sizeof(AVSubtitleRect));
+	get_subtitle_ontime_2(current_time, subtiltle_index,time_diff, sub_rect);
+	LOG("open_subtitle-->get_subtitle_ontime_3 end");
+	if(sub_rect){
+		av_picture = &(sub_rect->pict);
+		LOG("open_subtitle--> sub_rect->w = %d,sub_rect->h=%d", sub_rect->w, sub_rect->h);
+		if (sub_rect->w > 0 && sub_rect->h > 0) {
+
+		    void *b = NULL;
+		    b = (*env)->GetDirectBufferAddress(env, buffer);
+		    if (!b) {
+		        return NULL;
+		    }
+
+		    exchange_image_type(sub_rect, b);
+
+		    return create_subtitle_bitmap(env, thiz, buffer, sub_rect->w, sub_rect->h);
+
+//			int byte_count = av_picture->linesize[0] * sub_rect->h;
+//			bitmap_data = init_byte_buffer(env, thiz, byte_count);
+//			b = (*env)->GetDirectBufferAddress(env, bitmap_data);
+//			memcpy(b, av_picture->data[0], byte_count);
+//			free_avpicture(av_picture);
+//			return create_subtitle_bitmap(env, thiz, bitmap_data, sub_rect->w, sub_rect->h);
+
+		}
+	}
+	return NULL;
+}
+
+void exchange_image_type(AVSubtitleRect *ffregion, void* data_address){
+    uint32_t *byte_buffer_p = (uint32_t *)data_address;
+
+    int x = 0;
+    int y = 0;
+    for (y = 0; y < ffregion->h; y++) {
+        for (x = 0; x < ffregion->w; x++) {
+            /*  I don't think don't have paletized RGB_A_ */
+            const uint8_t index = ffregion->pict.data[0][y * ffregion->w+x];
+            uint32_t color;
+            memcpy(&color, &ffregion->pict.data[1][4*index], 4);
+
+            uint32_t *p = &(byte_buffer_p[y * ffregion->w+x]);
+
+            uint8_t *p_rgba = (uint8_t *)p;
+            p_rgba[0] = (color >> 16) & 0xff;
+            p_rgba[1] = (color >>  8) & 0xff;
+            p_rgba[2] = (color >>  0) & 0xff;
+            p_rgba[3] = (color >> 24) & 0xff;
+        }
+    }
+}
+
+JNIEXPORT jint Java_com_clov4r_moboplayer_android_nil_codec_SubtitleJni_isSubtitleExits(
 		JNIEnv* env, jobject thiz, jstring jfile) {
 	char *file = (*env)->GetStringUTFChars(env, jfile, 0);
 

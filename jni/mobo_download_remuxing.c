@@ -317,6 +317,7 @@ int saving_network_media(const char *in_filename, const char *out_filename,
 		AVStream *in_stream, *out_stream;
 
 		ret = ffmpeg.av_read_frame(ifmt_ctx, &pkt);
+//		LOG("av_read_frame AVPacket = %d, pkt = %d", sizeof(AVPacket), sizeof(pkt));
 		if (ret < 0) {
 			LOG("download_streaming-->while -- ret=%d...", ret);
 			break;

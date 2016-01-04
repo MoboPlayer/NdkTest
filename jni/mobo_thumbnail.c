@@ -26,16 +26,6 @@
 #include "cmp_ffmpeg.h"
 #include "mobo_thumbnail.h"
 
-static AVFormatContext *fmt_ctx = NULL;
-static AVCodecContext *video_dec_ctx = NULL;
-static AVStream *video_stream = NULL;
-static struct SwsContext *sws_context = NULL;
-static AVFrame *frame = NULL;
-static AVPicture picture;
-static const char *src_filename = NULL;
-
-static int video_stream_idx = -1;
-
 extern ffmpeg_func_t ffmpeg;
 
 static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
@@ -48,8 +38,8 @@ static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
 
 	ret = ffmpeg.av_find_best_stream(fmt_ctx, type, -1, -1, NULL, 0);
 	if (ret < 0) {
-		fprintf(stderr, "Could not find %s stream in input file '%s'\n",
-				ffmpeg.av_get_media_type_string(type), src_filename);
+//		fprintf(stderr, "Could not find %s stream in input file '%s'\n",
+//				ffmpeg.av_get_media_type_string(type), thumbnail_data->src_filename);
 //		return ret;
 	} else {
 		*stream_idx = ret;
@@ -75,65 +65,76 @@ static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
 }
 
 //use ffmpeg generate file's thumbnail at gen_second(second)
-int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
+int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame, mobo_thumbnail_data *thumbnail_data) {
 	int ret = 0;
 	AVPacket packet;
 	int got_frame = 0;
 	int64_t seek_target = 0;
+	thumbnail_data->fmt_ctx = NULL;
 
-	src_filename = file;
+	thumbnail_data->src_filename = file;
 	/* register all formats and codecs */
 	ffmpeg.av_register_all();
+	ffmpeg.avformat_network_init();
+	LOG("gen_thumbnail---file-path=%s", thumbnail_data->src_filename);
+
+	thumbnail_data->fmt_ctx = NULL;
+	thumbnail_data->fmt_ctx = ffmpeg.avformat_alloc_context();
+//	thumbnail_data->fmt_ctx->max_analyze_duration2 = 1000000;
+//	thumbnail_data->fmt_ctx->probesize2 = 1000000;
 
 	/* open input file, and allocate format context */
-	if ((ret = ffmpeg.avformat_open_input(&fmt_ctx, src_filename, NULL, NULL))
+	if (!thumbnail_data->fmt_ctx || (ret = ffmpeg.avformat_open_input(&(thumbnail_data->fmt_ctx), thumbnail_data->src_filename, NULL, NULL))
 			< 0) {
-		fprintf(stderr, "Could not open source file %s\n", src_filename);
+		fprintf(stderr, "Could not open source file %s\n", thumbnail_data->src_filename);
 		char error[500];
 		ffmpeg.av_strerror(ret, error, 500);
-
+		LOG("gen_thumbnail---error=%s", error);
 		return -1;
 	}
 
+	LOG("gen_thumbnail---2");
 	/* retrieve stream information */
-	if (ffmpeg.avformat_find_stream_info(fmt_ctx, NULL) < 0) {
+	if (ffmpeg.avformat_find_stream_info(thumbnail_data->fmt_ctx, NULL) < 0) {
 		fprintf(stderr, "Could not find stream information\n");
 		return -2;
 	}
 
-	if (open_codec_context(&video_stream_idx, fmt_ctx, AVMEDIA_TYPE_VIDEO)
+	LOG("gen_thumbnail---3");
+	if (open_codec_context(&(thumbnail_data->video_stream_idx), thumbnail_data->fmt_ctx, AVMEDIA_TYPE_VIDEO)
 			>= 0) {
-		video_stream = fmt_ctx->streams[video_stream_idx];
-		video_dec_ctx = video_stream->codec;
+		thumbnail_data->video_stream = thumbnail_data->fmt_ctx->streams[thumbnail_data->video_stream_idx];
+		thumbnail_data->video_dec_ctx = thumbnail_data->video_stream->codec;
 	} else {
 		ret = -5;
 		goto end;
 	}
 
+	LOG("gen_thumbnail---4");
 	/* dump input information to stderr */
-	ffmpeg.av_dump_format(fmt_ctx, 0, src_filename, 0);
+	ffmpeg.av_dump_format(thumbnail_data->fmt_ctx, 0, thumbnail_data->src_filename, 0);
 
-	if (!video_stream) {
+	if (!thumbnail_data->video_stream) {
 		fprintf(stderr,
 				"Could not find audio or video stream in the input, aborting\n");
 		ret = -3;
 		goto end;
 	}
 
-	if (!frame) {
+	if (!thumbnail_data->frame) {
 		fprintf(stderr, "Could not find frame\n");
 		ret = -4;
 		goto end;
 	}
 
-	if (gen_IDR_frame || gen_second > fmt_ctx->duration / AV_TIME_BASE)
+	if (gen_IDR_frame || gen_second > thumbnail_data->fmt_ctx->duration / AV_TIME_BASE)
 		gen_second = 0;
 
 	if (!gen_IDR_frame) {
 		seek_target = gen_second * AV_TIME_BASE;
 		seek_target = ffmpeg.av_rescale_q(seek_target, AV_TIME_BASE_Q,
-				video_stream->time_base);
-//	ffmpeg.avformat_seek_file(fmt_ctx, video_stream_idx, 0, seek_target,
+				thumbnail_data->video_stream->time_base);
+//	ffmpeg.avformat_seek_file(fmt_ctx, thumbnail_data->video_stream_idx, 0, seek_target,
 //			seek_target, //INT64_MAX
 //			AVSEEK_FLAG_BACKWARD|AVSEEK_FLAG_ANY); //AVSEEK_FLAG_FRAME
 
@@ -141,45 +142,53 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 
 		if (seek_target < 0)
 			seek_target = gen_second * 1000;
-		ffmpeg.av_seek_frame(fmt_ctx, video_stream_idx, seek_target,
-				AVSEEK_FLAG_BACKWARD); // | AVSEEK_FLAG_FRAME
+		int seek_type = AVSEEK_FLAG_BACKWARD;
+//		if(thumbnail_data->need_key_frame){
+			seek_type |= AVSEEK_FLAG_FRAME;
+//		}
+//		ffmpeg.av_seek_frame(thumbnail_data->fmt_ctx, thumbnail_data->video_stream_idx, seek_target,
+//				seek_type);
+		ffmpeg.avformat_seek_file(thumbnail_data->fmt_ctx, thumbnail_data->video_stream_idx, 0, seek_target,
+					seek_target,
+					seek_type);
+		LOG("gen_thumbnail--->seek finished");
 	}
 
 	int got_right_frame = 0;
 	int flag = 0;
 	double pts;
-	while (!got_right_frame && ffmpeg.av_read_frame(fmt_ctx, &packet) >= 0) {
-		if (packet.stream_index == video_stream_idx) {
-			ffmpeg.avcodec_decode_video2(video_dec_ctx, frame, &got_frame,
+	while (!got_right_frame && ffmpeg.av_read_frame(thumbnail_data->fmt_ctx, &packet) >= 0) {
+		if (packet.stream_index == thumbnail_data->video_stream_idx) {
+			ffmpeg.avcodec_decode_video2(thumbnail_data->video_dec_ctx, thumbnail_data->frame, &got_frame,
 					&packet);
 			if (got_frame) {
-				if (!gen_IDR_frame) {
+				LOG("gen_thumbnail++dts=%lld++seek_target=%lld,thumbnail_data->need_key_frame=%d", packet.dts, seek_target, thumbnail_data->need_key_frame); //frame->pkt_pts
+				if (!gen_IDR_frame && !thumbnail_data->need_key_frame) {
 					if (packet.dts != AV_NOPTS_VALUE) {
 						pts = packet.dts;
 					} else {
 						pts = 0;
 					}
-//					LOG("gen_thumbnail++%lf++%lld", pts, seek_target); //frame->pkt_pts
 					int64_t current_time = ffmpeg.av_rescale_q(pts,
-							video_stream->time_base, AV_TIME_BASE_Q);
+							thumbnail_data->video_stream->time_base, AV_TIME_BASE_Q);
 					float time_diff = (float) current_time / AV_TIME_BASE
 							- gen_second;
-//					LOG("gen_thumbnail-->current_time=%lld----seek_target=%lld----gen_second=%d---time_diff=%f", current_time, seek_target, gen_second, time_diff);
+					LOG("gen_thumbnail-->current_time=%lld----seek_target=%lld----gen_second=%d---time_diff=%f", current_time, seek_target, gen_second, time_diff);
 					if (time_diff > -0.03) { //&& time_diff < 0.03
 						got_right_frame = 1;
 					} else {
 						if (time_diff >= -10) {
-							ffmpeg.av_frame_free(&frame);
-							frame = NULL;
-							frame = ffmpeg.av_frame_alloc();
-							if (!frame)
+							ffmpeg.av_frame_free(&(thumbnail_data->frame));
+							thumbnail_data->frame = NULL;
+							thumbnail_data->frame = ffmpeg.av_frame_alloc();
+							if (!thumbnail_data->frame)
 								break;
 						} else { //if (time_diff > 10 || time_diff < -10)
 							got_right_frame = 1;
 						}
 					}
 				} else {
-					if (frame->pict_type == AV_PICTURE_TYPE_I) {
+					if (thumbnail_data->frame->key_frame) {
 						got_right_frame = 1;
 					}
 				}
@@ -188,81 +197,195 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) {
 		ffmpeg.av_free_packet(&packet);
 	}
 	if (gen_IDR_frame && !got_right_frame) {
-		ffmpeg.avcodec_decode_video2(video_dec_ctx, frame, &got_frame, &packet);
+		ffmpeg.avcodec_decode_video2(thumbnail_data->video_dec_ctx, thumbnail_data->frame, &got_frame, &packet);
 		ffmpeg.av_free_packet(&packet);
 	}
 
 	return ret;
 
-	end: if (frame) {
-		ffmpeg.av_frame_free(&frame);
-		frame = NULL;
+	end: if (thumbnail_data->frame) {
+		ffmpeg.av_frame_free(&(thumbnail_data->frame));
+		thumbnail_data->frame = NULL;
 	}
 
-	if (video_dec_ctx != NULL) {
-		ffmpeg.avcodec_close(video_dec_ctx);
-		video_dec_ctx = NULL;
+	if (thumbnail_data->video_dec_ctx != NULL) {
+		ffmpeg.avcodec_close(thumbnail_data->video_dec_ctx);
+		thumbnail_data->video_dec_ctx = NULL;
 	}
-	if (fmt_ctx) {
-		ffmpeg.avformat_close_input(&fmt_ctx);
-		fmt_ctx = NULL;
+	if (thumbnail_data->fmt_ctx) {
+		ffmpeg.avformat_close_input(&(thumbnail_data->fmt_ctx));
+		thumbnail_data->fmt_ctx = NULL;
 	}
 
 	return ret;
 }
 
+
+//如果为0为执行成功
+int write_png_file(char* file_name,int width,int height,unsigned short* buf)
+{
+    png_structp png_ptr;
+    png_infop info_ptr;
+    int number_of_passes;
+    png_bytep * row_pointers; //图像的行数组
+
+    FILE *fp = fopen(file_name, "wb");
+    if (!fp)
+    {
+        LOGD("[write_png_file] File %s could not be opened for writing", file_name);
+        return -1;
+    }
+
+    if(!ffmpeg.  png_create_write_struct)
+    	return -11;
+
+    png_ptr = ffmpeg.  png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+
+    if (!png_ptr)
+    {
+        LOGD("[write_png_file] png_create_write_struct failed");
+        return -2;
+    }
+
+    info_ptr = ffmpeg.  png_create_info_struct(png_ptr);
+    if (!info_ptr)
+    {
+        LOGD("[write_png_file] png_create_info_struct failed");
+        return -3;
+    }
+
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        LOGD("[write_png_file] Error during init_io");
+        return -4;
+    }
+
+    ffmpeg.  png_init_io(png_ptr, fp);
+
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        LOGD("[write_png_file] Error during writing header");
+        return -5;
+    }
+
+    ffmpeg.  png_set_IHDR(png_ptr, info_ptr, width, height,
+                 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+                 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+
+    ffmpeg.  png_write_info(png_ptr, info_ptr);
+
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        LOGD("[write_png_file] Error during writing bytes");
+        return -6;
+    }
+
+//    LOGD("==png begin png_write_image");
+
+    row_pointers = (png_bytep*) malloc(sizeof(png_bytep) * height);
+
+    unsigned short* buf_ptr = buf;
+    unsigned short int mask_1 = 0xF800, mask_2 = 0x7E0, mask_3 = 0x1F;
+
+    int y;
+    for (y=0; y<height; y++)
+    {
+       row_pointers[y] =  (png_byte*) malloc(width*3);
+
+       png_bytep row = row_pointers[y];
+
+       int x;
+       for (x=0; x<width; x++)
+       {
+            png_byte* ptr = &(row[x*3]);
+
+            unsigned short color = *buf_ptr;
+            ptr[0] = (unsigned char)((color & mask_1) >> 11) * 8; //R
+            ptr[1] =  (unsigned char)((color & mask_2) >> 5) * 4;
+            ptr[2] = (unsigned char)(color & mask_3) * 8; //B
+
+            buf_ptr ++;
+       }
+    }
+
+    ffmpeg.  png_write_image(png_ptr, row_pointers);
+//    LOGD("==png end png_write_image");
+
+
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        LOGD("[write_png_file] Error during end of write");
+    }
+
+    ffmpeg.  png_write_end(png_ptr, NULL);
+
+    for (y=0; y<height; y++)
+       free(row_pointers[y]);
+    free(row_pointers);
+
+    fclose(fp);
+    LOGD("==png png_write_image finished");
+}
+
 AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
-		int *height, int gen_IDR_frame) {
+		int *height, int gen_IDR_frame, mobo_thumbnail_data *thumbnail_data, int dst_img_format) {
 	int ret = 0;
-	frame = ffmpeg.av_frame_alloc();
-	if (!frame) {
+	thumbnail_data->frame = ffmpeg.av_frame_alloc();
+//	thumbnail_data->fmt_ctx = (AVFormatContext *) malloc(sizeof(AVFormatContext));
+//    memset(thumbnail_data->fmt_ctx, 0, sizeof(AVFormatContext));
+	if (!thumbnail_data->frame) {
 		return NULL;
 	}
 
-	ret = gen_thumbnail(file, gen_second, gen_IDR_frame);
+	ret = gen_thumbnail(file, gen_second, gen_IDR_frame, thumbnail_data);
 
 	if (ret < 0) {
-		if (frame)
-			ffmpeg.av_frame_free(&frame);
+		if (thumbnail_data->frame)
+			ffmpeg.av_frame_free(&(thumbnail_data->frame));
+		LOG("get_rgb24_picture gen_thumbnail failed ret=%d", ret);
 		return NULL;
 	}
 
 	if (*width <= 0 || *height <= 0) {
-		*width = (video_dec_ctx->width);
-		*height = (video_dec_ctx->height);
+		*width = (thumbnail_data->video_dec_ctx->width);
+		*height = (thumbnail_data->video_dec_ctx->height);
 	}
 //	LOG("gen_thumbnail---width=%d,height=%d...", *width, *height);
-
-	ret = ffmpeg.avpicture_alloc(&picture, AV_PIX_FMT_ARGB, *width, *height);
-
+	LOG("get_rgb24_picture 1");
+	ret = ffmpeg.avpicture_alloc(&(thumbnail_data->picture), dst_img_format, *width, *height);//AV_PIX_FMT_RGB565 AV_PIX_FMT_ARGB
+	LOG("get_rgb24_picture after alloc");
 	if (ret < 0) {
-		if (frame)
-			ffmpeg.av_frame_free(&frame);
+		if (thumbnail_data->frame)
+			ffmpeg.av_frame_free(&(thumbnail_data->frame));
+		LOG("get_rgb24_picture avpicture_alloc failed ret=%d", ret);
 		return NULL;
 	}
 
-	sws_context = ffmpeg.sws_getCachedContext(sws_context, video_dec_ctx->width,
-			video_dec_ctx->height, video_dec_ctx->pix_fmt, *width, *height,
-			AV_PIX_FMT_ARGB, SWS_FAST_BILINEAR, NULL, NULL, NULL);
+	thumbnail_data->sws_context = ffmpeg.sws_getCachedContext(thumbnail_data->sws_context, thumbnail_data->video_dec_ctx->width,
+			thumbnail_data->video_dec_ctx->height, thumbnail_data->video_dec_ctx->pix_fmt, *width, *height,
+			dst_img_format, SWS_FAST_BILINEAR, NULL, NULL, NULL);//AV_PIX_FMT_RGB565  AV_PIX_FMT_ARGB
+	LOG("get_rgb24_picture after init context");
 
-	ffmpeg.sws_scale(sws_context, (const uint8_t **) frame->data,
-			frame->linesize, 0, video_dec_ctx->height, picture.data,
-			picture.linesize);
+	ffmpeg.sws_scale(thumbnail_data->sws_context, (const uint8_t **) thumbnail_data->frame->data,
+			thumbnail_data->frame->linesize, 0, thumbnail_data->video_dec_ctx->height, thumbnail_data->picture.data,
+			thumbnail_data->picture.linesize);
+	LOG("get_rgb24_picture after scale");
 
-	if (frame) {
-		ffmpeg.av_frame_free(&frame);
-		frame = NULL;
+	if (thumbnail_data->frame) {
+		ffmpeg.av_frame_free(&(thumbnail_data->frame));
+		thumbnail_data->frame = NULL;
 	}
-	if (video_dec_ctx) {
-		ffmpeg.avcodec_close(video_dec_ctx);
-		video_dec_ctx = NULL;
+	if (thumbnail_data->video_dec_ctx) {
+		ffmpeg.avcodec_close(thumbnail_data->video_dec_ctx);
+		thumbnail_data->video_dec_ctx = NULL;
 	}
-	if (fmt_ctx) {
-		ffmpeg.avformat_close_input(&fmt_ctx);
-		fmt_ctx = NULL;
+	if (thumbnail_data->fmt_ctx) {
+		ffmpeg.avformat_close_input(&(thumbnail_data->fmt_ctx));
+		thumbnail_data->fmt_ctx = NULL;
 	}
 
-	AVPicture *p = &picture;
+	AVPicture *p = &(thumbnail_data->picture);
+	LOG("get_rgb24_picture finished");
 	return p;
 }
 

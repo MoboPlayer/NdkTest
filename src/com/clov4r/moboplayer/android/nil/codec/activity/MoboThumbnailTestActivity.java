@@ -28,23 +28,22 @@ import android.app.Activity;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ImageView.ScaleType;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni;
+import com.clov4r.moboplayer.android.nil.codec.SubtitleJni;
 import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni.OnBitmapCreatedListener;
 
 public class MoboThumbnailTestActivity extends Activity {
-	// final String videoName =
-	// Environment.getExternalStorageDirectory()+"/dy/ppkard.mp4";
-	 final String videoName ="/sdcard/Movies/Frozen.2013.3D.BluRay.HSBS.1080p.DTS.x264-CHD3D.mkv";
-	 //Environment.getExternalStorageDirectory()+"/Movies/[奥黛丽·赫本系列01：罗马假日].Roman.Holiday.1953.DVDRiP.X264.2Audio.AAC.HALFCD-NORM.Christian.mkv";//蒙羞之旅BD中英双字.rmvb
-//	final String videoName = "/sdcard/Movies/播放失败导致mobo重启.m2ts";// /sdcard/Movies/01010020_0006.MP4
-	 //rtsp://184.72.239.149/vod/mp4:BigBuckBunny_115k.mov
+	String videoName = "/sdcard/Movies/[天空战记].[dmhy][syurato][002][jap_chn][550k]_分辨率显示不正确.rmvb";// /sdcard/Video/ANIXE3D.ts fast_five 情歌.mp4    三星4K超高清广告20140103.mp4
+	//rtsp://192.168.42.1/tmp/fuse_d/share/2015-01-01-16-50-47.MP4 
 
 	final String img_save_path = Environment.getExternalStorageDirectory()
 			+ "/mobo_screen_shot_%d.png";
@@ -58,6 +57,10 @@ public class MoboThumbnailTestActivity extends Activity {
 		layout = new LinearLayout(this);
 		layout.setOrientation(LinearLayout.VERTICAL);
 		imageView = new ImageView(this);
+		SubtitleJni h = new SubtitleJni();
+		String libpath = getFilesDir().getParent() + "/lib/";
+		String libname = "libffmpeg.so";// libffmpeg_armv7_neon.so
+		h.loadFFmpegLibs(libpath, libname);
 
 		Button button = new Button(this);
 		layout.addView(button);
@@ -67,32 +70,66 @@ public class MoboThumbnailTestActivity extends Activity {
 		button.setOnClickListener(mOnClickListener);
 	}
 
+	Bitmap bitmap = null;
 	int flag = 1;
+	int time = 20;
 	OnClickListener mOnClickListener = new OnClickListener() {
 
 		@Override
 		public void onClick(View v) {
 			// TODO Auto-generated method stub
-			Bitmap bitmap=null;
-//			ScreenShotLibJni.getInstance().setOnBitmapCreatedListener(
-//					mOnBitmapCreatedListener);
-			if (flag++ % 2 == 0)
-				bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
-						"/sdcard/test.png", 2216, 150, 150);//
-			else
-				bitmap=ScreenShotLibJni.getInstance().getIDRFrameThumbnail(videoName,
-						"/sdcard/test.png", 0, 0);
+			// ScreenShotLibJni.getInstance().setOnBitmapCreatedListener(
+			// mOnBitmapCreatedListener);
+			// if (flag++ % 2 == 0)
+			// bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
+			// "/sdcard/test.png", 1, 150, 150);//
+			// else
+//			 bitmap=ScreenShotLibJni.getInstance().getIDRFrameThumbnail(videoName,
+//			 "/sdcard/test.png", 0, 0);
 
-			layout.removeView(imageView);
-			layout.addView(imageView);
-			imageView.setImageBitmap(bitmap);
-//			 Intent intent=new Intent();
-//			 intent.setComponent(new
-//			 ComponentName("com.clov4r.moboplayer.android.nil",
-//			 "com.clov4r.moboplayer.android.nil.MainInterface"));
+			// time += 10;
+			// bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
+			// "/sdcard/test.png", time, 1280, 720);//
+
+			if(bitmap!=null){
+				imageView.setImageBitmap(null);
+				bitmap.recycle();
+			}
+
+			time += 1;
+			
+//			long currentTime = System.currentTimeMillis();
+//			Log.e("", "getKeyFrameScreenShot---current=" + currentTime);
+			bitmap = ScreenShotLibJni.getInstance().getScreenShot(
+					videoName, "/sdcard/test.png", time, 1024, 720);
+
+//			currentTime = System.currentTimeMillis();
+//			Log.e("", "getKeyFrameScreenShot---current=" + currentTime);
 //			
-//			 intent.setData(Uri.parse(videoName));
-//			 startActivity(intent);
+//			currentTime = System.currentTimeMillis();
+//			Log.e("", "getIDRFrameThumbnail---current=" + currentTime);
+//			bitmap = ScreenShotLibJni.getInstance().getIDRFrameThumbnail(
+//					videoName, "/sdcard/test.png", 180, 120);
+//
+//			currentTime = System.currentTimeMillis();
+//			Log.e("", "getIDRFrameThumbnail---current=" + currentTime);
+
+			// videoName
+			// ="/sdcard/电影/[欧美][预告][长发公主][高清RMVB][1280&times;720][中文字幕].rmvb";
+			//
+			// bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
+			// "/sdcard/test.png", 2, 1280, 720);//
+
+			// layout.addView(imageView);
+//			imageView.setScaleType(ScaleType.CENTER_CROP);
+			imageView.setImageBitmap(bitmap);
+			// Intent intent=new Intent();
+			// intent.setComponent(new
+			// ComponentName("com.clov4r.moboplayer.android.nil",
+			// "com.clov4r.moboplayer.android.nil.MainInterface"));
+			//
+			// intent.setData(Uri.parse(videoName));
+			// startActivity(intent);
 		}
 	};
 
@@ -115,7 +152,8 @@ public class MoboThumbnailTestActivity extends Activity {
 		@Override
 		public void onBitmapCreatedFailed(String videoPath) {
 			// TODO Auto-generated method stub
-			Toast.makeText(MoboThumbnailTestActivity.this, "截图失败", Toast.LENGTH_SHORT).show();
+			Toast.makeText(MoboThumbnailTestActivity.this, "截图失败",
+					Toast.LENGTH_SHORT).show();
 		}
 	};
 }

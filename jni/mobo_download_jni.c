@@ -8,7 +8,7 @@
 JavaVM* jvm = NULL;
 jobject java_object = NULL;
 
-void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeStartDownload2(
+JNIEXPORT void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeStartDownload2(
 		JNIEnv* env, jobject thiz, jstring streamingUrl, jstring fileSavePath,
 		jint currentTime, jlong finishedSize) { //jlongArray ptsArray
 	java_object = thiz;
@@ -24,7 +24,7 @@ void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeSta
 }
 
 
-void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeStartDownload(
+JNIEXPORT void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeStartDownload(
 		JNIEnv* env, jobject thiz, jstring streamingUrl, jstring fileSavePath,
 		jlongArray ptsArray, jlong finishedSize) {
 	java_object = thiz;
@@ -55,7 +55,7 @@ void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeSta
 		(*env)->ReleaseLongArrayElements(env, ptsArray, p_array, 0);
 }
 
-void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativePauseDownload(
+JNIEXPORT void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativePauseDownload(
 		JNIEnv* env, jobject thiz) {
 	if (get_download_flag() == FLAG_DOWNLOAD_START) {
 		set_download_flag(FLAG_DOWNLOAD_PAUSE);
@@ -63,13 +63,13 @@ void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativePau
 
 }
 
-void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeResumeDownload(
+JNIEXPORT void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeResumeDownload(
 		JNIEnv* env, jobject thiz) {
 	if (get_download_flag() == FLAG_DOWNLOAD_PAUSE) {
 		set_download_flag(FLAG_DOWNLOAD_START);
 	}
 }
-void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeStopDownload(
+JNIEXPORT void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeStopDownload(
 		JNIEnv* env, jobject thiz) {
 	set_download_flag(FLAG_DOWNLOAD_STOP);
 	des_mutex_cond();
@@ -77,17 +77,17 @@ void Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeSto
 //	jvm = NULL;
 }
 
-jint Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeGetDuration(
+JNIEXPORT jint Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeGetDuration(
 		JNIEnv* env, jobject thiz) {
 	return get_duration();
 }
 
-jint Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeGetCurrentTimeDownloadedTo(
+JNIEXPORT jint Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeGetCurrentTimeDownloadedTo(
 		JNIEnv* env, jobject thiz) {
 	return get_current_time_downloaded_to();
 }
 
-jint Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeGetStartDownloadedTime(
+JNIEXPORT jint Java_com_clov4r_moboplayer_android_nil_codec_StreamingDownloadLib_nativeGetStartDownloadedTime(
 		JNIEnv* env, jobject thiz) {
 	return get_start_downloaded_time();
 }

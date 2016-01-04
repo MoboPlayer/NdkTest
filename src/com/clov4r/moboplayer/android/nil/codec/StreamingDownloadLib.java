@@ -130,9 +130,8 @@ public class StreamingDownloadLib {
 		return downloadData.startTime;
 	}
 
-	public native void nativeStartDownload(String streamingUrl,
-			String fileSavePath, long[] ptsArray, long finishedSize); // int
-																		// currentTime
+	public native int nativeStartDownload(String streamingUrl,
+			String fileSavePath,  long[] ptsArray, long finishedSize); //String packetFile,
 
 	public native void nativeStartDownload3(int intArray[]);
 
@@ -170,6 +169,9 @@ public class StreamingDownloadLib {
 					mStreamingDownloadData.fileSavePath,
 					mStreamingDownloadData.getPtsArray(),
 					mStreamingDownloadData.finishSize);// mStreamingDownloadData.finishSize
+//			nativeStartDownload(mStreamingDownloadData.streamingUrl,
+//					mStreamingDownloadData.fileSavePath,
+//					mStreamingDownloadData.packetFile);//,
 			return null;
 		}
 

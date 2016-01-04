@@ -27,8 +27,13 @@ package com.clov4r.moboplayer.android.nil.codec;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 
 import org.apache.commons.io.FileUtils;
+
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.Config;
 
 public class SubtitleJni extends BaseJNILib {
 
@@ -59,8 +64,10 @@ public class SubtitleJni extends BaseJNILib {
 	 */
 	public native int openSubtitleFileInJNI2(String filePath, int index,
 			int subtiltle_index);
+
 	/**
 	 * 预解码方式：一次性解码完所有字幕。优点：取字幕时效率高；缺点：打开字幕时等待时间可能较长（字幕越多时间越长）
+	 * 
 	 * @param filePath
 	 * @param index
 	 * @return
@@ -76,16 +83,17 @@ public class SubtitleJni extends BaseJNILib {
 					FileUtils.writeLines(tempFile, "UTF-8",
 							FileUtils.readLines(new File(filePath), charSet));
 				}
-				return openSubtitleFileInJNI(tempPath, index,
-						subtiltle_index);
+				return openSubtitleFileInJNI(tempPath, index, subtiltle_index);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
 		return openSubtitleFileInJNI(filePath, index, subtiltle_index);
 	}
+
 	/**
 	 * 按需解码方式：到相应的时间点时再解码相应的字幕。优点：打开较快；缺点：获取字幕效率略低
+	 * 
 	 * @param filePath
 	 * @param index
 	 * @return
@@ -102,8 +110,7 @@ public class SubtitleJni extends BaseJNILib {
 					FileUtils.writeLines(tempFile, "UTF-8",
 							FileUtils.readLines(new File(filePath), charSet));
 				}
-				return openSubtitleFileInJNI2(tempPath, index,
-						subtiltle_index);
+				return openSubtitleFileInJNI2(tempPath, index, subtiltle_index);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -113,6 +120,7 @@ public class SubtitleJni extends BaseJNILib {
 
 	/**
 	 * 预解码方式：一次性解码完所有字幕。优点：取字幕时效率高；缺点：打开字幕时等待时间可能较长（字幕越多时间越长）
+	 * 
 	 * @param filePath
 	 * @param index
 	 * @return
@@ -123,6 +131,7 @@ public class SubtitleJni extends BaseJNILib {
 
 	/**
 	 * 按需解码方式：到相应的时间点时再解码相应的字幕。优点：打开较快；缺点：获取字幕效率略低
+	 * 
 	 * @param filePath
 	 * @param index
 	 * @return
@@ -159,26 +168,40 @@ public class SubtitleJni extends BaseJNILib {
 	 * 根据时间获取字幕内容
 	 * 
 	 * @param time
-	 * 单位：毫秒
+	 *            单位：毫秒
 	 * @return
 	 */
 	public native String getSubtitleByTime(int time, int subtiltle_index);
 
 	/**
 	 * 根据时间获取字幕内容
+	 * 
 	 * @param time
-	 * 单位：毫秒
+	 *            单位：毫秒
 	 * @param subtiltle_index
 	 * @param time_diff
 	 * @return
 	 */
-	public native String getSubtitleByTime2(int time, int subtiltle_index, int time_diff);
+	public native String getSubtitleByTime2(int time, int subtiltle_index,
+			int time_diff);
+
+	/**
+	 * 根据时间获取字幕内容(图形字幕)
+	 * 
+	 * @param time
+	 *            单位：毫秒
+	 * @param subtiltle_index
+	 * @param time_diff
+	 * @return
+	 */
+	public native Bitmap getSubtitleByTime3(int time, int subtiltle_index,
+			int time_diff, ByteBuffer byteBuffer);
 
 	/**
 	 * 根据时间获取字幕内容
 	 * 
 	 * @param time
-	 * 单位：毫秒
+	 *            单位：毫秒
 	 * @return
 	 */
 	public String getSubtitleByTime(int time) {
@@ -195,6 +218,35 @@ public class SubtitleJni extends BaseJNILib {
 		return getSubtitleByTime2(time, 0, 200);
 	}
 
+	/**
+	 * 根据时间获取图形字幕
+	 * 
+	 * @param time
+	 * @param byteBuffer
+	 *            字幕缓存区
+	 * @return
+	 */
+	public Bitmap getImageSubtitleByTime(int time, ByteBuffer byteBuffer) {
+		return getSubtitleByTime3(time, 0, 200, byteBuffer);
+	}
+
+	public Bitmap createBitmapOfSubtitle(ByteBuffer data, int width, int height) {
+		IntBuffer intBuffer = data.asIntBuffer();
+		int[] dataArray = new int[intBuffer.limit()];
+		intBuffer.get(dataArray);
+		Bitmap rest = Bitmap.createBitmap(dataArray, width, height,
+				Config.RGB_565);
+
+		return rest;
+
+	}
+
+	/**
+	 * 1:image subtitle ; >1:text subtitle
+	 * 
+	 * @param subtiltle_index
+	 * @return
+	 */
 	public native int getSubtitleType(int subtiltle_index);
 
 	public native String getSubtitleLanguage(String file);

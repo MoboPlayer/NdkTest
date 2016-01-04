@@ -32,12 +32,20 @@ import java.nio.IntBuffer;
 import java.util.HashMap;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Bitmap.Config;
+import android.graphics.Color;
+import android.media.MediaPlayer;
+import android.provider.CalendarContract.Colors;
 import android.util.Log;
 
 public class ScreenShotLibJni extends BaseJNILib {
 
 	private static ScreenShotLibJni mScreenShotLib = null;
+
+	public ScreenShotLibJni() {
+		super();
+	}
 
 	public static ScreenShotLibJni getInstance() {
 		if (mScreenShotLib == null)
@@ -47,13 +55,20 @@ public class ScreenShotLibJni extends BaseJNILib {
 
 	private HashMap<String, String> pathMap = new HashMap<String, String>();
 
-	protected native Bitmap getThumbnail(String videoName, int position,
+	protected native Bitmap getThumbnail(String videoName, String imagePath,
+			int position, int width, int height);
+
+	protected native Bitmap getKeyFrameThumbnail(String videoName,
+			int position, int width, int height);
+
+	protected native Bitmap getKeyFrameThumbnail2(String videoName,
+			String imagePath, int position, int width, int height);
+
+	protected native Bitmap getIDRThumbnail(String videoName, String imagePath,
 			int width, int height);
 
-	protected native Bitmap getIDRThumbnail(String videoName, int width, int height);
-
 	protected native void releaseByteBuffer(ByteBuffer buffer);
-	
+
 	OnBitmapCreatedListener mOnBitmapCreatedListener = null;
 
 	public void setOnBitmapCreatedListener(OnBitmapCreatedListener listener) {
@@ -63,16 +78,38 @@ public class ScreenShotLibJni extends BaseJNILib {
 	public Bitmap getIDRFrameThumbnail(String videoPath,
 			String thumbnailSavePath, int width, int height) {
 		pathMap.put(videoPath, thumbnailSavePath);
-		return getIDRThumbnail(videoPath, width, height);
+		return getIDRThumbnail(videoPath, thumbnailSavePath, width, height);
 	}
 
 	public Bitmap getScreenShot(String videoPath, String thumbnailSavePath,
 			int position, int width, int height) {
 		pathMap.put(videoPath, thumbnailSavePath);
-		return getThumbnail(videoPath, position, width, height);
+		return getThumbnail(videoPath, thumbnailSavePath, position, width,
+				height);
 	}
 
-	public Bitmap createBitmap(ByteBuffer bitmapData, String size, String fileName) {
+	public Bitmap getKeyFrameScreenShot(String videoPath,
+			String thumbnailSavePath, int position, int width, int height) {
+		pathMap.put(videoPath, thumbnailSavePath);
+		return getKeyFrameThumbnail(videoPath, position, width, height);
+	}
+
+	public Bitmap getKeyFrameScreenShot_2(String videoPath,
+			String thumbnailSavePath, int position, int width, int height) {
+		pathMap.put(videoPath, thumbnailSavePath);
+		return getKeyFrameThumbnail2(videoPath, thumbnailSavePath, position,
+				width, height);
+	}
+
+	/**
+	 * @deprecated
+	 * @param bitmapData
+	 * @param size
+	 * @param fileName
+	 * @return
+	 */
+	public Bitmap createBitmap(ByteBuffer bitmapData, String size,
+			String fileName) {
 		if (bitmapData != null) {
 			IntBuffer intBuffer = bitmapData.asIntBuffer();
 			String[] sizeArray = size.split(",");
@@ -89,12 +126,51 @@ public class ScreenShotLibJni extends BaseJNILib {
 			if (mOnBitmapCreatedListener != null)
 				mOnBitmapCreatedListener.onBitmapCreated(bitmap, fileName,
 						pathMap.get(fileName));
-//			releaseByteBuffer(bitmapData);
+			// releaseByteBuffer(bitmapData);
 			Log.e("", "release finished");
 			return bitmap;
 		} else if (mOnBitmapCreatedListener != null)
 			mOnBitmapCreatedListener.onBitmapCreatedFailed(fileName);
 		return null;
+	}
+
+	public Bitmap createBitmap(String fileName, String imgPath,
+			int width, int height) {
+		BitmapFactory.Options options = new BitmapFactory.Options();
+		options.inPreferredConfig = Config.RGB_565;
+		options.outHeight = height;
+		options.outWidth = width;
+		Bitmap bitmap = BitmapFactory.decodeFile(imgPath, options);
+		if (bitmap == null) {// 截图成功
+			if (mOnBitmapCreatedListener != null)
+				mOnBitmapCreatedListener.onBitmapCreated(bitmap, fileName,
+						imgPath);
+		} else {
+			if (mOnBitmapCreatedListener != null)
+				mOnBitmapCreatedListener.onBitmapCreatedFailed(fileName);
+		}
+		return bitmap;
+	}
+
+	public Bitmap createBitmap(String fileName, String imgPath, byte[] data,
+			int width, int height) {
+		if (data != null) {
+			/** RGB565 **/
+			ByteBuffer buffer = ByteBuffer.wrap(data);
+			Bitmap bitmap = Bitmap.createBitmap(width, height, Config.RGB_565);
+			bitmap.copyPixelsFromBuffer(buffer);
+			saveBitmap(imgPath, bitmap);
+			if (mOnBitmapCreatedListener != null) {
+				if (bitmap != null)
+					mOnBitmapCreatedListener.onBitmapCreated(bitmap, fileName,
+							imgPath);
+			}
+			return bitmap;
+		} else {
+			if (mOnBitmapCreatedListener != null)
+				mOnBitmapCreatedListener.onBitmapCreatedFailed(fileName);
+			return null;
+		}
 	}
 
 	public void initByteBuffer(ByteBuffer buffer, int size) {

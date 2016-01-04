@@ -37,7 +37,7 @@ int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_
 	path[0]=0;
 	png_path[0]=0;
 
-	LOG("ffmpeg so loaded.begin = %s%s", lib_path, ffmpeg_filename);
+//	LOG("ffmpeg so loaded.begin = %s%s", lib_path, ffmpeg_filename);
 
 	time_t dead_time = time(NULL);
 
@@ -52,7 +52,7 @@ int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_
 
 	sprintf(path,"%s%s", lib_path, ffmpeg_filename);
 	handle = (void *)dlopen (path, RTLD_NOW);
-	LOG("dlerror %s", dlerror());
+//	LOG("dlerror %s", dlerror());
 
 
 	//====load ffmpeg lib
@@ -272,6 +272,65 @@ int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_
 	ffmpeg_func_p->avio_write = dlsym(handle, "avio_write");
 	FF_FUNC_CHECK(ffmpeg_func_p->avio_write);
 
+	sprintf(png_path,"%s%s", lib_path, "libpng.so");
+	handle_libpng =dlopen (png_path, RTLD_LAZY);
+	ffmpeg_func_p->png_create_write_struct =dlsym(handle_libpng, "png_create_write_struct");
+	FF_FUNC_CHECK(ffmpeg_func_p->png_create_write_struct);
+	ffmpeg_func_p->png_create_info_struct =dlsym(handle_libpng, "png_create_info_struct");
+	FF_FUNC_CHECK(ffmpeg_func_p->png_create_info_struct);
+	ffmpeg_func_p->png_init_io =dlsym(handle_libpng, "png_init_io");
+	FF_FUNC_CHECK(ffmpeg_func_p->png_init_io);
+	ffmpeg_func_p->png_set_IHDR =dlsym(handle_libpng, "png_set_IHDR");
+	FF_FUNC_CHECK(ffmpeg_func_p->png_set_IHDR);
+	ffmpeg_func_p->png_write_image =dlsym(handle_libpng, "png_write_image");
+	FF_FUNC_CHECK(ffmpeg_func_p->png_write_image);
+	ffmpeg_func_p->png_write_end =dlsym(handle_libpng, "png_write_end");
+	FF_FUNC_CHECK(ffmpeg_func_p->png_write_end);
+	ffmpeg_func_p->png_write_info =dlsym(handle_libpng, "png_write_info");
+	FF_FUNC_CHECK(ffmpeg_func_p->png_write_info);
+	ffmpeg_func_p->png_set_shift =dlsym(handle_libpng, "png_set_shift");
+	FF_FUNC_CHECK(ffmpeg_func_p->png_set_shift);
+	ffmpeg_func_p->png_set_sBIT =dlsym(handle_libpng, "png_set_sBIT");
+	FF_FUNC_CHECK(ffmpeg_func_p->png_set_sBIT);
+
+
+	//////speed
+    ffmpeg_func_p->avfilter_register_all = dlsym(handle, "avfilter_register_all");
+    FF_FUNC_CHECK(ffmpeg_func_p->avfilter_register_all);
+    ffmpeg_func_p->avfilter_get_by_name = dlsym(handle, "avfilter_get_by_name");
+    FF_FUNC_CHECK(ffmpeg_func_p->avfilter_get_by_name);
+    ffmpeg_func_p->avfilter_graph_alloc = dlsym(handle, "avfilter_graph_alloc");
+    FF_FUNC_CHECK(ffmpeg_func_p->avfilter_graph_alloc);
+    ffmpeg_func_p->avfilter_graph_create_filter = dlsym(handle, "avfilter_graph_create_filter");
+    FF_FUNC_CHECK(ffmpeg_func_p->avfilter_graph_create_filter);
+    ffmpeg_func_p->avfilter_graph_config = dlsym(handle, "avfilter_graph_config");
+    FF_FUNC_CHECK(ffmpeg_func_p->avfilter_graph_config);
+    ffmpeg_func_p->av_buffersrc_write_frame = dlsym(handle, "av_buffersrc_write_frame");
+    FF_FUNC_CHECK(ffmpeg_func_p->av_buffersrc_write_frame);
+    ffmpeg_func_p->av_buffersink_get_frame = dlsym(handle, "av_buffersink_get_frame");
+    FF_FUNC_CHECK(ffmpeg_func_p->av_buffersink_get_frame);
+    ffmpeg_func_p->avfilter_graph_free = dlsym(handle, "avfilter_graph_free");
+    FF_FUNC_CHECK(ffmpeg_func_p->avfilter_graph_free);
+    ffmpeg_func_p->avfilter_inout_alloc = dlsym(handle, "avfilter_inout_alloc");
+    FF_FUNC_CHECK(ffmpeg_func_p->avfilter_inout_alloc);
+    ffmpeg_func_p->av_get_sample_fmt_name = dlsym(handle, "av_get_sample_fmt_name");
+    FF_FUNC_CHECK(ffmpeg_func_p->av_get_sample_fmt_name);
+    ffmpeg_func_p->av_get_channel_layout_string = dlsym(handle, "av_get_channel_layout_string");
+    FF_FUNC_CHECK(ffmpeg_func_p->av_get_channel_layout_string);
+    ffmpeg_func_p->avfilter_inout_free = dlsym(handle, "avfilter_inout_free");
+    FF_FUNC_CHECK(ffmpeg_func_p->avfilter_inout_free);
+    ffmpeg_func_p->avfilter_graph_parse_ptr = dlsym(handle, "avfilter_graph_parse_ptr");
+    FF_FUNC_CHECK(ffmpeg_func_p->avfilter_graph_parse_ptr);
+    ffmpeg_func_p->av_strdup = dlsym(handle, "av_strdup");
+    FF_FUNC_CHECK(ffmpeg_func_p->av_strdup);
+    ffmpeg_func_p->av_frame_free = dlsym(handle, "av_frame_free");
+    FF_FUNC_CHECK(ffmpeg_func_p->av_frame_free);
+    ffmpeg_func_p->av_int_list_length_for_size = dlsym(handle, "av_int_list_length_for_size");
+    FF_FUNC_CHECK(ffmpeg_func_p->av_int_list_length_for_size);
+    ffmpeg_func_p->av_opt_set_bin = dlsym(handle, "av_opt_set_bin");
+    FF_FUNC_CHECK(ffmpeg_func_p->av_opt_set_bin);
+
+	//////speed
 	if ((error = dlerror()) != NULL)  {
 		LOG("!!!can't find sym in ffmpeg.so : %s",error);
 		return -1;

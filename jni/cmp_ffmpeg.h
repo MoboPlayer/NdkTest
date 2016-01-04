@@ -26,6 +26,9 @@
 #ifndef CMP_FFMPEG_H_
 #define CMP_FFMPEG_H_
 
+//版本标识：0，全部功能（mobo2.0，爱培科，山财）；1，基本功能和倍速（来胜）
+#define VERSION_FLAG 0
+
 #include <dlfcn.h>
 #include "config.h"
 #include <inttypes.h>
@@ -49,6 +52,15 @@
 //#ifdef __CMPLAYER__CORE__
 
 #include "cmp_log.h"
+#include "libpng/png.h"
+
+#include "libavfilter/buffersink.h"
+#include "libavfilter/buffersrc.h"
+#include "libavfilter/avfilter.h"
+#include "libavutil/attributes.h"
+
+#include "libavutil/opt.h"
+#include "libavutil/avutil.h"
 
 typedef struct ffmpeg_func_t {
 	void (*av_init_packet)(AVPacket *pkt);
@@ -177,6 +189,57 @@ typedef struct ffmpeg_func_t {
 
 	int (*avio_read)(AVIOContext *s, unsigned char *buf, int size);
 	void (*avio_write)(AVIOContext *s, const unsigned char *buf, int size);
+
+	//////libpng//////
+	png_structp (*png_create_write_struct)(png_const_charp user_png_ver, png_voidp error_ptr,
+	   png_error_ptr error_fn, png_error_ptr warn_fn);
+
+	png_infop (*png_create_info_struct)(png_structp png_ptr);
+
+	void (*png_init_io)(png_structp png_ptr, png_FILE_p fp);
+
+	void (*	png_set_IHDR)(png_structp png_ptr, png_infop info_ptr,
+	   png_uint_32 width, png_uint_32 height, int bit_depth,
+	   int color_type, int interlace_type, int compression_type,
+	   int filter_type);
+
+	void (*	png_write_image)(png_structp png_ptr, png_bytepp image);
+
+
+	void (*png_write_end)(png_structp png_ptr, png_infop info_ptr);
+
+	void (*png_write_info)(png_structp png_ptr, png_infop info_ptr);
+
+	void (*png_set_shift)(png_structp png_ptr, png_color_8p true_bits);
+
+	void (*png_set_sBIT)(png_structp png_ptr, png_infop info_ptr,   png_color_8p sig_bit);
+	//////libpng//////
+
+	//////speed
+	void (*avfilter_register_all)(void);
+	const AVFilter* (*avfilter_get_by_name)(const char * name);
+	AVFilterGraph* (*avfilter_graph_alloc)(void );
+	int (*avfilter_graph_create_filter)(AVFilterContext ** filt_ctx, const AVFilter * filt,
+	    const char * name, const char * args, void * opaque, AVFilterGraph * graph_ctx);
+
+	int (*avfilter_graph_config)(AVFilterGraph * graphctx, void *log_ctx);
+
+	int (*av_buffersrc_write_frame)(AVFilterContext* ctx,const AVFrame * frame);
+
+	int (*av_buffersink_get_frame)(AVFilterContext* ctx, AVFrame* frame);
+	void (*avfilter_graph_free)(AVFilterGraph **graph);
+
+	AVFilterInOut* (*avfilter_inout_alloc)(void);
+	const char * (*av_get_sample_fmt_name)(enum AVSampleFormat sample_fmt);
+	void (*av_get_channel_layout_string)(char *buf, int buf_size, int nb_channels, uint64_t channel_layout);
+	void (*avfilter_inout_free)(AVFilterInOut ** inout);
+	int (*avfilter_graph_parse_ptr)(AVFilterGraph *graph, const char *filters, AVFilterInOut **inputs, AVFilterInOut **outputs, void *log_ctx);
+	char* (*av_strdup)(const char * s);
+	unsigned (*av_int_list_length_for_size)(unsigned elsize, const void *list, uint64_t term);
+	int (*av_opt_set_bin)(void *obj, const char *name, const uint8_t *val, int len, int search_flags);
+
+	//////speed
+
 
 } ffmpeg_func_t;
 

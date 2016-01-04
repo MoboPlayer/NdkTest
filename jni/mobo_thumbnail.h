@@ -28,7 +28,22 @@
 
 #include "cmp_ffmpeg.h"
 
-int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame) ;
+struct mobo_thumbnail_data{
+	AVFormatContext *fmt_ctx;
+	AVCodecContext *video_dec_ctx;
+	AVStream *video_stream;
+	struct SwsContext *sws_context;
+	AVFrame *frame;
+	AVPicture picture;
+	const char *src_filename;
+	int video_stream_idx;
+	int need_key_frame;
+};
+
+typedef struct mobo_thumbnail_data mobo_thumbnail_data;
+
+int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame,mobo_thumbnail_data *thumbnail_data) ;
 AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
-		int *height, int gen_IDR_frame) ;
+		int *height, int gen_IDR_frame,mobo_thumbnail_data *thumbnail_data, int dst_img_format) ;
+int write_png_file(char* file_name,int width,int height,unsigned short* buf);
 #endif

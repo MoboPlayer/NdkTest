@@ -23,6 +23,7 @@
  *
  */
 #include "cmp_ffmpeg.h"
+#include <pthread.h>
 
 #ifndef SUB_FFMPEG_H_
 #define SUB_FFMPEG_H_
@@ -34,6 +35,10 @@ typedef struct SubtitleData {
     AVSubtitle          *subtitles_array;
     int                 subtitle_index;
     int                 subtitle_size;
+    int                 has_closed;
+    int                 is_decoding;
+    int                 is_seaching;
+    pthread_mutex_t     *sub_mutex;
 }SubtitleData;
 
 typedef SubtitleData *sub_data_p;
@@ -41,7 +46,7 @@ typedef SubtitleData *sub_data_p;
 int open_subtitle(const char *file, int stream_index, int subtiltle_index);
 int open_subtitle_2(const char *file, int stream_index, int subtiltle_index);
 char *get_subtitle_ontime(int cur_time, int subtiltle_index);
-char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff);
+char *get_subtitle_ontime_2(int cur_time, int subtiltle_index, int time_diff, AVSubtitleRect *sub_rect);
 void close_subtitle(int subtiltle_index);
 void close_subtitle_2(int subtiltle_index);
 int is_subtitle_exits(const char *file);

@@ -265,6 +265,7 @@ public class StreamingDownloadManager {
 		public int id;
 		public String streamingUrl;
 		public String fileSavePath;
+		public String packetFile;
 		// public int progress;
 		/** 已经下载的字节数 **/
 		public long finishSize;
