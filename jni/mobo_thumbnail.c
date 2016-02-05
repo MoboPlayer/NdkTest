@@ -64,12 +64,62 @@ static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
 	return ret;
 }
 
+void seek_stream(int64_t seek_target, int seek_flags, mobo_thumbnail_data *thumbnail_data){
+	seek_target = ffmpeg.  av_rescale_q(seek_target, AV_TIME_BASE_Q,
+			thumbnail_data->video_stream->time_base);
+	LOG("check_seek seek_target=%lld", seek_target);
+
+	// 根据key frame进行seek
+    int seek_any = 1;
+
+	int index = ffmpeg.  av_index_search_timestamp(thumbnail_data->video_stream,seek_target,seek_flags);
+
+	if (index>0) {
+		AVIndexEntry *entries= thumbnail_data->video_stream->index_entries;
+		int nb_entries= thumbnail_data->video_stream->nb_index_entries;
+
+		//查找key frame index
+		do {
+			if (index > nb_entries || index <0 ) break;
+
+			if (entries[index].flags & AVINDEX_KEYFRAME) {
+
+				seek_target = entries[index].timestamp;
+
+				if (seek_target < 0)  seek_target = 0;
+
+				seek_any = 0;
+				break;
+			}
+
+			if (seek_flags & AVSEEK_FLAG_BACKWARD) {//向后seek
+				index --;
+			} else {
+				index ++;
+			}
+
+		}while(1);
+
+	}
+
+
+	if (seek_any)
+		seek_flags = seek_flags | AVSEEK_FLAG_ANY;
+	else
+		seek_flags = seek_flags & ~AVSEEK_FLAG_ANY;
+
+	ffmpeg.avformat_seek_file(thumbnail_data->fmt_ctx, thumbnail_data->video_stream_idx, 0, seek_target,
+				seek_target,
+				seek_flags);
+}
+
 //use ffmpeg generate file's thumbnail at gen_second(second)
 int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame, mobo_thumbnail_data *thumbnail_data) {
 	int ret = 0;
 	AVPacket packet;
 	int got_frame = 0;
 	int64_t seek_target = 0;
+	int seek_times = 0;
 	thumbnail_data->fmt_ctx = NULL;
 
 	thumbnail_data->src_filename = file;
@@ -130,28 +180,40 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame, mobo_thum
 	if (gen_IDR_frame || gen_second > thumbnail_data->fmt_ctx->duration / AV_TIME_BASE)
 		gen_second = 0;
 
+reseek:
 	if (!gen_IDR_frame) {
-		seek_target = gen_second * AV_TIME_BASE;
+		seek_target = (int64_t)gen_second;
+		seek_target = seek_target * 1000 * 1000;//AV_TIME_BASE;
+		LOG("gen_thumbnail-->gen_second=%d,seek_target=%lld",gen_second,seek_target);
 		seek_target = ffmpeg.av_rescale_q(seek_target, AV_TIME_BASE_Q,
 				thumbnail_data->video_stream->time_base);
+	    LOG("gen_thumbnail-->seek_target=%lld",seek_target);
 //	ffmpeg.avformat_seek_file(fmt_ctx, thumbnail_data->video_stream_idx, 0, seek_target,
 //			seek_target, //INT64_MAX
 //			AVSEEK_FLAG_BACKWARD|AVSEEK_FLAG_ANY); //AVSEEK_FLAG_FRAME
 
-//		LOG("gen_thumbnail-->seek_target=%lld+++time_base->num=%d+++time_base->den=%d", seek_target, video_stream->time_base.num, video_stream->time_base.den);
+		LOG("gen_thumbnail-->gen_second=%d,seek_target=%lld+++time_base->num=%d+++time_base->den=%d",
+				gen_second,seek_target, thumbnail_data->video_stream->time_base.num, thumbnail_data->video_stream->time_base.den);
 
 		if (seek_target < 0)
 			seek_target = gen_second * 1000;
 		int seek_type = AVSEEK_FLAG_BACKWARD;
-//		if(thumbnail_data->need_key_frame){
+		if(thumbnail_data->need_key_frame){
 			seek_type |= AVSEEK_FLAG_FRAME;
-//		}
+		}
 //		ffmpeg.av_seek_frame(thumbnail_data->fmt_ctx, thumbnail_data->video_stream_idx, seek_target,
 //				seek_type);
-		ffmpeg.avformat_seek_file(thumbnail_data->fmt_ctx, thumbnail_data->video_stream_idx, 0, seek_target,
-					seek_target,
-					seek_type);
+
+		if(thumbnail_data->need_key_frame || seek_times >= 1)
+			ffmpeg.avformat_seek_file(thumbnail_data->fmt_ctx, thumbnail_data->video_stream_idx, 0, seek_target,
+						seek_target,
+						seek_type);
+		else
+		    seek_stream(seek_target, seek_type, thumbnail_data);
+
+		seek_times++;
 		LOG("gen_thumbnail--->seek finished");
+
 	}
 
 	int got_right_frame = 0;
@@ -162,7 +224,7 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame, mobo_thum
 			ffmpeg.avcodec_decode_video2(thumbnail_data->video_dec_ctx, thumbnail_data->frame, &got_frame,
 					&packet);
 			if (got_frame) {
-				LOG("gen_thumbnail++dts=%lld++seek_target=%lld,thumbnail_data->need_key_frame=%d", packet.dts, seek_target, thumbnail_data->need_key_frame); //frame->pkt_pts
+//				LOG("gen_thumbnail++dts=%lld++seek_target=%lld,thumbnail_data->need_key_frame=%d", packet.dts, seek_target, thumbnail_data->need_key_frame); //frame->pkt_pts
 				if (!gen_IDR_frame && !thumbnail_data->need_key_frame) {
 					if (packet.dts != AV_NOPTS_VALUE) {
 						pts = packet.dts;
@@ -171,21 +233,35 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame, mobo_thum
 					}
 					int64_t current_time = ffmpeg.av_rescale_q(pts,
 							thumbnail_data->video_stream->time_base, AV_TIME_BASE_Q);
-					float time_diff = (float) current_time / AV_TIME_BASE
+					float current_time_f = (float) current_time / AV_TIME_BASE;
+					float time_diff = current_time_f
 							- gen_second;
-					LOG("gen_thumbnail-->current_time=%lld----seek_target=%lld----gen_second=%d---time_diff=%f", current_time, seek_target, gen_second, time_diff);
+//					LOG("gen_thumbnail current_time=%lld,gen_second=%d,current=%2.2f",current_time,gen_second,current_time_f);
+//					if(thumbnail_data->frame->key_frame || thumbnail_data->frame->pict_type == AV_PICTURE_TYPE_I)
+//						LOG("gen_thumbnail is key frame");
+//					LOG("gen_thumbnail-->current_time=%lld----seek_target=%lld----gen_second=%d---time_diff=%f", current_time, seek_target, gen_second, time_diff);
 					if (time_diff > -0.03) { //&& time_diff < 0.03
 						got_right_frame = 1;
+//						LOG("gen_thumbnail keyframe=%d,pict_type=%d",thumbnail_data->frame->key_frame,thumbnail_data->frame->pict_type);
 					} else {
-						if (time_diff >= -10) {
-							ffmpeg.av_frame_free(&(thumbnail_data->frame));
-							thumbnail_data->frame = NULL;
-							thumbnail_data->frame = ffmpeg.av_frame_alloc();
-							if (!thumbnail_data->frame)
-								break;
-						} else { //if (time_diff > 10 || time_diff < -10)
-							got_right_frame = 1;
+						if(time_diff <= -15 && seek_times == 1){
+//							LOG("gen_thumbnail goto reseek");
+							ffmpeg.av_free_packet(&packet);
+							goto reseek;
 						}
+						else
+							continue;
+//						continue;
+//						if (time_diff >= -10) {
+//							ffmpeg.av_frame_free(&(thumbnail_data->frame));
+//							thumbnail_data->frame = NULL;
+//							thumbnail_data->frame = ffmpeg.av_frame_alloc();
+//							if (!thumbnail_data->frame)
+//								break;
+//							continue;
+//						} else { //if (time_diff > 10 || time_diff < -10)
+//							got_right_frame = 1;
+//						}
 					}
 				} else {
 					if (thumbnail_data->frame->key_frame) {
