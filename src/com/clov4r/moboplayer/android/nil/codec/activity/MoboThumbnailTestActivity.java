@@ -42,7 +42,7 @@ import com.clov4r.moboplayer.android.nil.codec.SubtitleJni;
 import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni.OnBitmapCreatedListener;
 
 public class MoboThumbnailTestActivity extends Activity {
-	String videoName = "/sdcard/rmvb/[阳光电影www.ygdy8.com].道士下山.HD.720p.国语中字.rmvb";// /sdcard/Video/ANIXE3D.ts fast_five 情歌.mp4    
+	String videoName = "/sdcard/Movies/all is well.rmvb";// test.mp4  2016-02-18-08-59-27.MP4
 	//rtsp://192.168.42.1/tmp/fuse_d/share/2015-01-01-16-50-47.MP4 
 
 	final String img_save_path = Environment.getExternalStorageDirectory()
@@ -72,7 +72,7 @@ public class MoboThumbnailTestActivity extends Activity {
 
 	Bitmap bitmap = null;
 	int flag = 1;
-	int time = 5034;//3700;
+	int time = 15034;//3700;
 	OnClickListener mOnClickListener = new OnClickListener() {
 
 		@Override
@@ -100,8 +100,8 @@ public class MoboThumbnailTestActivity extends Activity {
 			
 //			long currentTime = System.currentTimeMillis();
 //			Log.e("", "getKeyFrameScreenShot---current=" + currentTime);
-			bitmap = ScreenShotLibJni.getInstance().getScreenShot(
-					videoName, "/sdcard/test.png", time, 1920, 1080);
+			bitmap = ScreenShotLibJni.getInstance().getKeyFrameScreenShot_2(
+					videoName, "/sdcard/test.png", time, 1280, 720);
 
 //			currentTime = System.currentTimeMillis();
 //			Log.e("", "getKeyFrameScreenShot---current=" + currentTime);
@@ -109,7 +109,7 @@ public class MoboThumbnailTestActivity extends Activity {
 //			currentTime = System.currentTimeMillis();
 //			Log.e("", "getIDRFrameThumbnail---current=" + currentTime);
 //			bitmap = ScreenShotLibJni.getInstance().getIDRFrameThumbnail(
-//					videoName, "/sdcard/test.png", 180, 120);
+//					videoName, "/sdcard/test.png", 1280, 720);
 //
 //			currentTime = System.currentTimeMillis();
 //			Log.e("", "getIDRFrameThumbnail---current=" + currentTime);

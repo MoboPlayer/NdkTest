@@ -113,6 +113,11 @@ void seek_stream(int64_t seek_target, int seek_flags, mobo_thumbnail_data *thumb
 				seek_flags);
 }
 
+static void ff_log_callback(void*avcl, int level, const char*fmt, va_list vl)
+{
+    LOG("error is %s",fmt);
+}
+
 //use ffmpeg generate file's thumbnail at gen_second(second)
 int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame, mobo_thumbnail_data *thumbnail_data) {
 	int ret = 0;
@@ -121,6 +126,8 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame, mobo_thum
 	int64_t seek_target = 0;
 	int seek_times = 0;
 	thumbnail_data->fmt_ctx = NULL;
+//	ffmpeg.av_log_set_level(48);
+//	ffmpeg.av_log_set_callback(ff_log_callback);
 
 	thumbnail_data->src_filename = file;
 	/* register all formats and codecs */
@@ -143,14 +150,12 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame, mobo_thum
 		return -1;
 	}
 
-	LOG("gen_thumbnail---2");
 	/* retrieve stream information */
 	if (ffmpeg.avformat_find_stream_info(thumbnail_data->fmt_ctx, NULL) < 0) {
 		fprintf(stderr, "Could not find stream information\n");
 		return -2;
 	}
 
-	LOG("gen_thumbnail---3");
 	if (open_codec_context(&(thumbnail_data->video_stream_idx), thumbnail_data->fmt_ctx, AVMEDIA_TYPE_VIDEO)
 			>= 0) {
 		thumbnail_data->video_stream = thumbnail_data->fmt_ctx->streams[thumbnail_data->video_stream_idx];
@@ -160,9 +165,16 @@ int gen_thumbnail(const char *file, int gen_second, int gen_IDR_frame, mobo_thum
 		goto end;
 	}
 
-	LOG("gen_thumbnail---4");
 	/* dump input information to stderr */
 	ffmpeg.av_dump_format(thumbnail_data->fmt_ctx, 0, thumbnail_data->src_filename, 0);
+
+	if(!thumbnail_data->video_dec_ctx || thumbnail_data->video_dec_ctx->pix_fmt < 0){
+		ret = -1;
+		goto end;
+	}
+
+	if(thumbnail_data->video_dec_ctx->pix_fmt < 0)
+		goto end;
 
 	if (!thumbnail_data->video_stream) {
 		fprintf(stderr,
@@ -415,7 +427,7 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 
 	ret = gen_thumbnail(file, gen_second, gen_IDR_frame, thumbnail_data);
 
-	if (ret < 0) {
+	if (ret < 0 || thumbnail_data->video_dec_ctx->pix_fmt < 0) {
 		if (thumbnail_data->frame)
 			ffmpeg.av_frame_free(&(thumbnail_data->frame));
 		LOG("get_rgb24_picture gen_thumbnail failed ret=%d", ret);

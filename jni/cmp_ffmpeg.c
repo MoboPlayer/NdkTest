@@ -293,6 +293,12 @@ int init_ffmpeg_func(const char *lib_path, const char * ffmpeg_filename, ffmpeg_
 	ffmpeg_func_p->png_set_sBIT =dlsym(handle_libpng, "png_set_sBIT");
 	FF_FUNC_CHECK(ffmpeg_func_p->png_set_sBIT);
 
+	ffmpeg_func_p->av_log_set_level = dlsym(handle, "av_log_set_level");
+	FF_FUNC_CHECK(ffmpeg_func_p->av_log_set_level);
+
+	ffmpeg_func_p->av_log_set_callback = dlsym(handle, "av_log_set_callback");
+	FF_FUNC_CHECK(ffmpeg_func_p->av_log_set_callback);
+
 
 	//////speed
     ffmpeg_func_p->avfilter_register_all = dlsym(handle, "avfilter_register_all");

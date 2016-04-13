@@ -134,7 +134,7 @@ jobject get_thumbnail_sync_2(JNIEnv* env, jobject thiz, jstring video_name, jstr
 	char *video_path = (*env)->GetStringUTFChars(env, video_name, 0);
 	LOG("get_thumbnail_sync2 create video name 1");
 	char *image_path = (*env)->GetStringUTFChars(env, image_name, 0);
-	LOG("get_thumbnail_sync2 create video name 2");
+	LOG("get_thumbnail_sync2 create video name 2 thumbnail_data=%p",thumbnail_data);
 	int gen_IDR_frame = 0;
 	if (frameType > 0)
 		gen_IDR_frame = 1;

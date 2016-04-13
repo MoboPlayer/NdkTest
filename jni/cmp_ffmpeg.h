@@ -189,6 +189,10 @@ typedef struct ffmpeg_func_t {
 
 	int (*avio_read)(AVIOContext *s, unsigned char *buf, int size);
 	void (*avio_write)(AVIOContext *s, const unsigned char *buf, int size);
+    void (*av_log_set_level)(int level);
+
+    void (*av_log_set_callback)(void (*callback)(void*, int, const char*, va_list));
+
 
 	//////libpng//////
 	png_structp (*png_create_write_struct)(png_const_charp user_png_ver, png_voidp error_ptr,
