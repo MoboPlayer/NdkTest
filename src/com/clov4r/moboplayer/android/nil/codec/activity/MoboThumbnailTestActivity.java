@@ -42,7 +42,7 @@ import com.clov4r.moboplayer.android.nil.codec.SubtitleJni;
 import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni.OnBitmapCreatedListener;
 
 public class MoboThumbnailTestActivity extends Activity {
-	String videoName = "/sdcard/Movies/all is well.rmvb";// test.mp4  2016-02-18-08-59-27.MP4
+	String videoName = "/sdcard/Movies/静流-恋文.mkv";// Movies/all is well.rmvb
 	//rtsp://192.168.42.1/tmp/fuse_d/share/2015-01-01-16-50-47.MP4 
 
 	final String img_save_path = Environment.getExternalStorageDirectory()
@@ -72,7 +72,7 @@ public class MoboThumbnailTestActivity extends Activity {
 
 	Bitmap bitmap = null;
 	int flag = 1;
-	int time = 15034;//3700;
+	int time = 160;//2904 + 7*5左右有黑块; 3714 + 4*5黑块
 	OnClickListener mOnClickListener = new OnClickListener() {
 
 		@Override
@@ -88,20 +88,20 @@ public class MoboThumbnailTestActivity extends Activity {
 //			 "/sdcard/test.png", 0, 0);
 
 			// time += 10;
-			// bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
-			// "/sdcard/test.png", time, 1280, 720);//
+//			 bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
+//			 "/sdcard/test.png", time, 1280, 720);//
 
 			if(bitmap!=null){
 				imageView.setImageBitmap(null);
 				bitmap.recycle();
 			}
 
-			time += 1;
+//			time += 5;
 			
 //			long currentTime = System.currentTimeMillis();
 //			Log.e("", "getKeyFrameScreenShot---current=" + currentTime);
-			bitmap = ScreenShotLibJni.getInstance().getKeyFrameScreenShot_2(
-					videoName, "/sdcard/test.png", time, 1280, 720);
+//			bitmap = ScreenShotLibJni.getInstance().getKeyFrameScreenShot_2(
+//					videoName, "/sdcard/test.png", time, 1280, 720);
 
 //			currentTime = System.currentTimeMillis();
 //			Log.e("", "getKeyFrameScreenShot---current=" + currentTime);
@@ -112,13 +112,13 @@ public class MoboThumbnailTestActivity extends Activity {
 //					videoName, "/sdcard/test.png", 1280, 720);
 //
 //			currentTime = System.currentTimeMillis();
-//			Log.e("", "getIDRFrameThumbnail---current=" + currentTime);
+			Log.e("", "gen time = " + time);
 
 			// videoName
 			// ="/sdcard/电影/[欧美][预告][长发公主][高清RMVB][1280&times;720][中文字幕].rmvb";
 			//
-			// bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
-			// "/sdcard/test.png", 2, 1280, 720);//
+			 bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
+			 "/sdcard/test.png", time, 1280, 720);//
 
 			// layout.addView(imageView);
 //			imageView.setScaleType(ScaleType.CENTER_CROP);

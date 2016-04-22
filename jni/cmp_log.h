@@ -14,7 +14,6 @@
 
 #define  LOG_TAG    "NDKTest"
 
-/*
 	#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 	#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
@@ -25,8 +24,8 @@
 	#define  LOGD1(...) __android_log_print(ANDROID_LOG_DEBUG,"player",__VA_ARGS__)
 	#define  LOGD2(...) __android_log_print(ANDROID_LOG_DEBUG,"OOOplayer",__VA_ARGS__)
 	#define  LOG LOGD
-*/
 
+/*
 	#define LOGD
 	#define LOGV
 	#define LOGE
@@ -35,6 +34,7 @@
 	#define LOG LOGD
 	#define LOGD1 LOGD
 	#define LOGD2 LOGD
+*/
 #else
 
 #define LOGD
