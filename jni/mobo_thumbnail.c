@@ -25,8 +25,11 @@
 
 #include "cmp_ffmpeg.h"
 #include "mobo_thumbnail.h"
+#include <pthread.h>
 
 extern ffmpeg_func_t ffmpeg;
+int has_closed;
+pthread_mutex_t *sync_mutex = NULL;
 
 static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
 		enum AVMediaType type) {
@@ -53,6 +56,8 @@ static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx,
 					ffmpeg.av_get_media_type_string(type));
 			return AVERROR(EINVAL);
 		}
+
+		dec_ctx->thread_count = 4;
 
 		if ((ret = ffmpeg.avcodec_open2(dec_ctx, dec, NULL)) < 0) {
 			fprintf(stderr, "Failed to open %s codec\n",
@@ -246,16 +251,18 @@ reseek:
 	int flag = 0;
 //	double pts;
 	int64_t pts;
-	while (!got_right_frame && ffmpeg.av_read_frame(thumbnail_data->fmt_ctx, &packet) >= 0) {
+	int has_got_key_frame = 0;
+	while (!has_closed && !got_right_frame && ffmpeg.av_read_frame(thumbnail_data->fmt_ctx, &packet) >= 0) {
 		if (packet.stream_index == thumbnail_data->video_stream_idx) {
 			ffmpeg.avcodec_decode_video2(thumbnail_data->video_dec_ctx, thumbnail_data->frame, &got_frame,
 					&packet);
 			if (got_frame) {
 				LOG("gen_thumbnail++dts=%lld++seek_target=%lld,thumbnail_data->need_key_frame=%d", packet.dts, seek_target, thumbnail_data->need_key_frame); //frame->pkt_pts
-				if(thumbnail_data->frame->key_frame)
-					LOG("gen_thumbnail key_frame");
-				if(thumbnail_data->frame->pict_type == AV_PICTURE_TYPE_I)
-					LOG("gen_thumbnail I frame");
+				if(thumbnail_data->frame->key_frame){
+					has_got_key_frame = 1;
+//					LOG("gen_thumbnail key_frame");
+				}
+
 				if (!gen_IDR_frame && !thumbnail_data->need_key_frame) {
 					if (packet.dts != AV_NOPTS_VALUE) {
 						pts = packet.dts;
@@ -268,7 +275,8 @@ reseek:
 //					float time_diff = current_time_f
 //							- gen_second;
 //					if (time_diff > -0.03) {
-					if(pts >= seek_target){
+//
+					if(pts >= seek_target && has_got_key_frame){// || pts - seek_target >= 5000
 						got_right_frame = 1;
 					} else {
 //						if(time_diff <= -15 && seek_times == 1){
@@ -277,7 +285,8 @@ reseek:
 //							goto reseek;
 //						}
 //						else
-							continue;
+
+						continue;
 					}
 				} else {
 					if (thumbnail_data->frame->key_frame) {
@@ -288,6 +297,15 @@ reseek:
 		}
 		ffmpeg.av_free_packet(&packet);
 	}
+	if(has_closed)
+		LOG("has_closed");
+
+	if(has_closed && !got_right_frame){
+		LOG("has_closed && !got_right_frame");
+		ret = -5;
+		goto end;
+	}
+
 	if (gen_IDR_frame && !got_right_frame) {
 		ffmpeg.avcodec_decode_video2(thumbnail_data->video_dec_ctx, thumbnail_data->frame, &got_frame, &packet);
 		ffmpeg.av_free_packet(&packet);
@@ -421,12 +439,22 @@ int write_png_file(char* file_name,int width,int height,unsigned short* buf)
 
 AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		int *height, int gen_IDR_frame, mobo_thumbnail_data *thumbnail_data, int dst_img_format) {
+
+    if(sync_mutex == NULL){
+    	sync_mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+    	memset(sync_mutex, 0, sizeof(pthread_mutex_t));
+    }
+    pthread_mutex_lock(sync_mutex);
+	has_closed = 0;
+
+    AVPicture *p = NULL;
 	int ret = 0;
 	thumbnail_data->frame = ffmpeg.av_frame_alloc();
 //	thumbnail_data->fmt_ctx = (AVFormatContext *) malloc(sizeof(AVFormatContext));
 //    memset(thumbnail_data->fmt_ctx, 0, sizeof(AVFormatContext));
 	if (!thumbnail_data->frame) {
-		return NULL;
+//		return NULL;
+		goto end;
 	}
 
 	ret = gen_thumbnail(file, gen_second, gen_IDR_frame, thumbnail_data);
@@ -435,7 +463,8 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		if (thumbnail_data->frame)
 			ffmpeg.av_frame_free(&(thumbnail_data->frame));
 		LOG("get_rgb24_picture gen_thumbnail failed ret=%d", ret);
-		return NULL;
+//		return NULL;
+		goto end;
 	}
 
 	if (*width <= 0 || *height <= 0) {
@@ -450,7 +479,8 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		if (thumbnail_data->frame)
 			ffmpeg.av_frame_free(&(thumbnail_data->frame));
 		LOG("get_rgb24_picture avpicture_alloc failed ret=%d", ret);
-		return NULL;
+//		return NULL;
+		goto end;
 	}
 
 	thumbnail_data->sws_context = ffmpeg.sws_getCachedContext(thumbnail_data->sws_context, thumbnail_data->video_dec_ctx->width,
@@ -476,8 +506,12 @@ AVPicture *get_rgb24_picture(const char *file, int gen_second, int *width,
 		thumbnail_data->fmt_ctx = NULL;
 	}
 
-	AVPicture *p = &(thumbnail_data->picture);
+	p = &(thumbnail_data->picture);
 	LOG("get_rgb24_picture finished");
+
+end:
+    pthread_mutex_unlock(sync_mutex);
+
 	return p;
 }
 
@@ -485,3 +519,6 @@ void free_avpicture(AVPicture *picture) {
 	ffmpeg.avpicture_free(picture);
 }
 
+void stop_create_image(){
+	has_closed = 1;
+}

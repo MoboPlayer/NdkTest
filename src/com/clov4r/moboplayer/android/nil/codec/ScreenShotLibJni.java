@@ -58,6 +58,8 @@ public class ScreenShotLibJni extends BaseJNILib {
 	protected native Bitmap getThumbnail(String videoName, String imagePath,
 			int position, int width, int height);
 
+	protected native Bitmap stopGetThumbnail();
+
 	protected native Bitmap getKeyFrameThumbnail(String videoName,
 			int position, int width, int height);
 
@@ -75,12 +77,33 @@ public class ScreenShotLibJni extends BaseJNILib {
 		mOnBitmapCreatedListener = listener;
 	}
 
+	/**
+	 * Get the first IDR frame,and save it to thumbnailSavePath
+	 * @param videoPath
+	 * @param thumbnailSavePath
+	 * @param width
+	 * @param height
+	 * @return
+	 */
 	public Bitmap getIDRFrameThumbnail(String videoPath,
 			String thumbnailSavePath, int width, int height) {
 		pathMap.put(videoPath, thumbnailSavePath);
 		return getIDRThumbnail(videoPath, thumbnailSavePath, width, height);
 	}
-
+	
+	public void stopCreatingThumbnail(){
+		stopGetThumbnail();
+	}
+	
+	/**
+	 * Get a frame(maybe not key frame)
+	 * @param videoPath
+	 * @param thumbnailSavePath
+	 * @param position
+	 * @param width
+	 * @param height
+	 * @return
+	 */
 	public Bitmap getScreenShot(String videoPath, String thumbnailSavePath,
 			int position, int width, int height) {
 		pathMap.put(videoPath, thumbnailSavePath);
@@ -88,19 +111,37 @@ public class ScreenShotLibJni extends BaseJNILib {
 				height);
 	}
 
+	/**
+	 * Get a key frame and save as ARGB format
+	 * @param videoPath
+	 * @param thumbnailSavePath
+	 * @param position
+	 * @param width
+	 * @param height
+	 * @return
+	 */
 	public Bitmap getKeyFrameScreenShot(String videoPath,
 			String thumbnailSavePath, int position, int width, int height) {
 		pathMap.put(videoPath, thumbnailSavePath);
 		return getKeyFrameThumbnail(videoPath, position, width, height);
 	}
 
+	/**
+	 * Get a key frame and save as RGB565 format
+	 * @param videoPath
+	 * @param thumbnailSavePath
+	 * @param position
+	 * @param width
+	 * @param height
+	 * @return
+	 */
 	public Bitmap getKeyFrameScreenShot_2(String videoPath,
 			String thumbnailSavePath, int position, int width, int height) {
 		pathMap.put(videoPath, thumbnailSavePath);
 		return getKeyFrameThumbnail2(videoPath, thumbnailSavePath, position,
 				width, height);
 	}
-
+	
 	/**
 	 * @deprecated
 	 * @param bitmapData
@@ -146,6 +187,8 @@ public class ScreenShotLibJni extends BaseJNILib {
 				mOnBitmapCreatedListener.onBitmapCreated(bitmap, fileName,
 						imgPath);
 		} else {
+			if(!new File(imgPath).exists())
+			    saveBitmap(imgPath, bitmap);
 			if (mOnBitmapCreatedListener != null)
 				mOnBitmapCreatedListener.onBitmapCreatedFailed(fileName);
 		}

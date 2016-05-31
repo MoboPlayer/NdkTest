@@ -255,3 +255,9 @@ JNIEXPORT jobject Java_com_clov4r_moboplayer_android_nil_codec_ScreenShotLibJni_
 	return get_thumbnail_sync_2(env, thiz, video_name, img_name, 0, width, height, 1);
 }
 
+JNIEXPORT jobject Java_com_clov4r_moboplayer_android_nil_codec_ScreenShotLibJni_stopGetThumbnail(
+		JNIEnv* env, jobject thiz) {
+	if(VERSION_FLAG == 1)
+		return NULL;
+	return stop_create_image();
+}

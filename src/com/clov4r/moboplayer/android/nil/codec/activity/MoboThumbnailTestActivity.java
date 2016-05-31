@@ -26,8 +26,17 @@ package com.clov4r.moboplayer.android.nil.codec.activity;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.PorterDuff.Mode;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.graphics.drawable.RoundedBitmapDrawable;
+import android.support.v4.graphics.drawable.RoundedBitmapDrawableFactory;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -42,7 +51,7 @@ import com.clov4r.moboplayer.android.nil.codec.SubtitleJni;
 import com.clov4r.moboplayer.android.nil.codec.ScreenShotLibJni.OnBitmapCreatedListener;
 
 public class MoboThumbnailTestActivity extends Activity {
-	String videoName = "/sdcard/Movies/静流-恋文.mkv";// Movies/all is well.rmvb
+	String videoName = "/sdcard/Movies/静流-恋文.mkv";// [阳光电影www.ygdy8.com].安妮：纽约奇缘.BD.720p.中英双字幕.rmvb
 	//rtsp://192.168.42.1/tmp/fuse_d/share/2015-01-01-16-50-47.MP4 
 
 	final String img_save_path = Environment.getExternalStorageDirectory()
@@ -72,7 +81,7 @@ public class MoboThumbnailTestActivity extends Activity {
 
 	Bitmap bitmap = null;
 	int flag = 1;
-	int time = 160;//2904 + 7*5左右有黑块; 3714 + 4*5黑块
+	int time = 165;//纽约奇缘第3600 + 1200 + 57秒花屏
 	OnClickListener mOnClickListener = new OnClickListener() {
 
 		@Override
@@ -96,7 +105,6 @@ public class MoboThumbnailTestActivity extends Activity {
 				bitmap.recycle();
 			}
 
-//			time += 5;
 			
 //			long currentTime = System.currentTimeMillis();
 //			Log.e("", "getKeyFrameScreenShot---current=" + currentTime);
@@ -117,11 +125,29 @@ public class MoboThumbnailTestActivity extends Activity {
 			// videoName
 			// ="/sdcard/电影/[欧美][预告][长发公主][高清RMVB][1280&times;720][中文字幕].rmvb";
 			//
-			 bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
-			 "/sdcard/test.png", time, 1280, 720);//
+			for(int i = 0;i< 20; i++){
+				final int index = i;
+				new Thread(){
+					@Override
+					public void run(){
+						 bitmap=ScreenShotLibJni.getInstance().getScreenShot(videoName,
+								 "/sdcard/test_"+ index +".png", time, 1280, 720);//
+					}
+				}.start();
+				time += 3;
+			}
+			 
+//			 RoundedBitmapDrawable roundedBitmapDrawable = RoundedBitmapDrawableFactory.create(getResources(), bitmap);
+//			 roundedBitmapDrawable.setCornerRadius(6); //设置圆角半径为正方形边长的一半
+//			 roundedBitmapDrawable.setAntiAlias(true);
+//			 imageView.setImageDrawable(roundedBitmapDrawable);
+			 
+//			 Bitmap tmpBitmap = getRoundedCornerBitmap(bitmap, 6);
+//			 bitmap.recycle();
+//			 imageView.setImageBitmap(tmpBitmap);
 
 			// layout.addView(imageView);
-//			imageView.setScaleType(ScaleType.CENTER_CROP);
+			imageView.setScaleType(ScaleType.CENTER_CROP);
 			imageView.setImageBitmap(bitmap);
 			// Intent intent=new Intent();
 			// intent.setComponent(new
@@ -132,6 +158,31 @@ public class MoboThumbnailTestActivity extends Activity {
 			// startActivity(intent);
 		}
 	};
+	
+    public Bitmap getRoundedCornerBitmap(Bitmap bitmap, float roundPx) {
+		try {
+			Bitmap output = Bitmap.createBitmap(bitmap.getWidth(),
+					bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+			Canvas canvas = new Canvas(output);
+			final Paint paint = new Paint();
+			final Rect rect = new Rect(0, 0, bitmap.getWidth(),
+					bitmap.getHeight());
+			final RectF rectF = new RectF(new Rect(0, 0, bitmap.getWidth(),
+					bitmap.getHeight()));
+			paint.setAntiAlias(true);
+			canvas.drawARGB(0, 0, 0, 0);
+			paint.setColor(Color.BLACK);
+			canvas.drawRoundRect(rectF, roundPx, roundPx, paint);
+			paint.setXfermode(new PorterDuffXfermode(Mode.SRC_IN));
+			final Rect src = new Rect(0, 0, bitmap.getWidth(),
+					bitmap.getHeight());
+
+			canvas.drawBitmap(bitmap, src, rect, paint);
+			return output;
+		} catch (Exception e) {
+			return bitmap;
+		}
+	}
 
 	OnBitmapCreatedListener mOnBitmapCreatedListener = new OnBitmapCreatedListener() {
 		@Override

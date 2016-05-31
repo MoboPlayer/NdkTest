@@ -38,6 +38,8 @@ struct mobo_thumbnail_data{
 	const char *src_filename;
 	int video_stream_idx;
 	int need_key_frame;
+	int has_closed;
+	int task_id;
 };
 
 typedef struct mobo_thumbnail_data mobo_thumbnail_data;
