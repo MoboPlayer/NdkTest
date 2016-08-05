@@ -25,8 +25,8 @@
 	#define  LOGD1(...) __android_log_print(ANDROID_LOG_DEBUG,"player",__VA_ARGS__)
 	#define  LOGD2(...) __android_log_print(ANDROID_LOG_DEBUG,"OOOplayer",__VA_ARGS__)
 	#define  LOG LOGD
-
 */
+
 	#define LOGD
 	#define LOGV
 	#define LOGE

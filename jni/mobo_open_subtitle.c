@@ -151,6 +151,7 @@ void close_subtitle(int subtiltle_index) {
 		sub_p->has_closed = 1;
 //		usleep(30000);
 		int i; // error: 'for' loop initial declarations are only allowed in C99 or C11 mode
+		if(sub_p->subtitles_array)
 		for (i = 0; i < sub_p->subtitle_size; i++) {
 			AVSubtitle *sp = &(sub_p->subtitles_array[i]);
 			ffmpeg.avsubtitle_free(sp);
@@ -167,7 +168,7 @@ void close_subtitle(int subtiltle_index) {
 char *get_subtitle_ontime(int cur_time, int subtiltle_index) {
 //	LOG("get_subtitle_ontime---start");
 
-	if (!g_sub_p[subtiltle_index] || g_sub_p[subtiltle_index]->has_closed) {
+	if (!g_sub_p[subtiltle_index] || g_sub_p[subtiltle_index]->has_closed || !g_sub_p[subtiltle_index]->subtitles_array) {
 		return NULL;
 	}
 	g_sub_p[subtiltle_index]->is_seaching = 1;
@@ -337,7 +338,10 @@ int subtitle_read_decode(sub_data_p sub_p, int open_type) {//open_type: 1,加载
 						(void *) sub_p->subtitles_array,
 						sub_p->subtitle_size * sizeof(AVSubtitle));
 				if (!temp_p) {
-					ffmpeg.av_freep(sub_p->subtitles_array);
+					LOG("subtitle_read_decode 1 before av_freep");
+					ffmpeg.av_freep(&(sub_p->subtitles_array));
+					sub_p->subtitles_array = NULL;
+					LOG("subtitle_read_decode 1 after av_freep");
 					ret = -2;//return -2;
 				} else {
 					sub_p->subtitles_array = temp_p;
@@ -349,7 +353,10 @@ int subtitle_read_decode(sub_data_p sub_p, int open_type) {//open_type: 1,加载
 			ret = ffmpeg.avcodec_decode_subtitle2(sub_p->dec_ctx, subtitle,
 					&got_frame, &pkt);
 			if (ret < 0) {
-				ffmpeg.av_freep(sub_p->subtitles_array);
+				LOG("subtitle_read_decode 2 before av_freep ret=%d", ret);
+				ffmpeg.av_freep(&(sub_p->subtitles_array));
+				sub_p->subtitles_array = NULL;
+				LOG("subtitle_read_decode 2 after av_freep");
 				break;//return ret;
 			}
 

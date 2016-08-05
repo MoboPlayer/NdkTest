@@ -77,6 +77,7 @@ public class MoboThumbnailTestActivity extends Activity {
 		button.setText("截图");
 		setContentView(layout);
 		button.setOnClickListener(mOnClickListener);
+		
 	}
 
 	Bitmap bitmap = null;
